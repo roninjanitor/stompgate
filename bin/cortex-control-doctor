@@ -1,0 +1,177 @@
+#!/bin/bash
+
+# Read-only diagnostics for Cortex Control on Omarchy. Never starts Wine and
+# never opens the Quad Cortex's HID interface. Exits 1 if any check fails.
+
+set -uo pipefail
+
+_here="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+if [[ -f $_here/../lib/cortex-control-omarchy.sh ]]; then
+  source "$_here/../lib/cortex-control-omarchy.sh"
+else
+  source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
+fi
+
+json=0
+case "${1:-}" in
+  --json) json=1 ;;
+  -h | --help)
+    echo "Usage: cortex-control-doctor [--json]"
+    exit 0
+    ;;
+  "") ;;
+  *) echo "Usage: cortex-control-doctor [--json]" >&2; exit 2 ;;
+esac
+
+results=()
+add() { results+=("$1"$'\t'"$2"$'\t'"$3"); }
+
+# --- System -----------------------------------------------------------------
+(( EUID != 0 )) && add OK "User" "$USER" || add FAIL "User" "running as root; run as your normal user"
+
+for pkg in umu-launcher curl jq icoutils; do
+  if ver=$(pacman -Q "$pkg" 2>/dev/null); then
+    add OK "Package $pkg" "${ver#* }"
+  elif [[ $pkg == icoutils ]]; then
+    add WARN "Package $pkg" "missing; the menu entry uses a generic icon"
+  else
+    add FAIL "Package $pkg" "missing; install the cortex-control-omarchy package"
+  fi
+done
+
+if pacman -Q cortex-control-omarchy >/dev/null 2>&1; then
+  add OK "Package cortex-control-omarchy" "$(pacman -Q cortex-control-omarchy | cut -d' ' -f2)"
+else
+  add WARN "Package cortex-control-omarchy" "not installed (running from a checkout?)"
+fi
+
+# --- Display and graphics ---------------------------------------------------
+if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && hyprctl version >/dev/null 2>&1; then
+  add OK "Hyprland" "$(hyprctl version -j 2>/dev/null | jq -r '.tag // .version // "running"')"
+  if [[ $(hyprctl getoption xwayland:enabled 2>/dev/null | awk '/bool:/ {print $2}') == "true" && -n ${DISPLAY:-} ]]; then
+    add OK "XWayland" "enabled (DISPLAY=$DISPLAY)"
+  else
+    add FAIL "XWayland" "disabled or DISPLAY unset; Cortex Control needs XWayland"
+  fi
+else
+  add WARN "Hyprland" "not detected in this session"
+fi
+
+icds=$(compgen -G '/usr/share/vulkan/icd.d/*.json'; compgen -G '/etc/vulkan/icd.d/*.json')
+if [[ -n $icds ]]; then
+  add OK "Vulkan driver" "$(xargs -n1 basename <<<"$icds" | tr '\n' ' ')"
+else
+  add FAIL "Vulkan driver" "no Vulkan ICD found; DXVK needs one (the window would stay black)"
+fi
+if command -v vulkaninfo >/dev/null; then
+  gpu=$(vulkaninfo --summary 2>/dev/null | sed -n 's/^\s*deviceName\s*=\s*//p' | head -1)
+  [[ -n $gpu ]] && add OK "Vulkan device" "$gpu" || add FAIL "Vulkan device" "vulkaninfo found no usable GPU"
+fi
+
+# --- Runtime and app --------------------------------------------------------
+if [[ -x $PROTON_DIR/proton ]]; then
+  add OK "Proton" "$(cut -d' ' -f2 "$PROTON_DIR/version" 2>/dev/null || echo "$PROTON_VERSION")"
+else
+  add FAIL "Proton" "$PROTON_VERSION not found in $DATA_DIR/proton; run cortex-control-setup"
+fi
+
+if [[ -f $PREFIX/system.reg ]]; then
+  add OK "Wine prefix" "$PREFIX"
+else
+  add FAIL "Wine prefix" "missing ($PREFIX); run cortex-control-setup"
+fi
+
+if [[ -f $APP ]]; then
+  if [[ $(sha256sum "$APP" | cut -d' ' -f1) == "$CC_APP_SHA256" ]]; then
+    add OK "Cortex Control" "$CC_VERSION (verified)"
+  else
+    add WARN "Cortex Control" "installed, but not the tested $CC_VERSION build"
+  fi
+else
+  add FAIL "Cortex Control" "not installed; run cortex-control-setup"
+fi
+
+# --- Quad Cortex --------------------------------------------------------------
+rules=()
+for f in /usr/lib/udev/rules.d/70-cortex-control-omarchy.rules /etc/udev/rules.d/70-cortex-control-omarchy.rules; do
+  [[ -f $f ]] && rules+=("$f")
+done
+case ${#rules[@]} in
+  0) add FAIL "udev rule" "not installed; install the cortex-control-omarchy package" ;;
+  1) add OK "udev rule" "${rules[0]}" ;;
+  *) add WARN "udev rule" "installed twice (${rules[*]}); remove the /etc copy" ;;
+esac
+
+nodes=$(qc_hidraw_nodes)
+if [[ -z $nodes ]]; then
+  add WARN "Quad Cortex" "not connected"
+else
+  while read -r node vidpid name; do
+    if [[ -r $node && -w $node ]]; then
+      add OK "Quad Cortex" "$name ($vidpid) on $node, accessible"
+    else
+      add FAIL "Quad Cortex" "$name on $node is not accessible; replug it, or check the udev rule"
+    fi
+    owners=$(lsof -t "$node" 2>/dev/null | sort -u)
+    others=""
+    for pid in $owners; do
+      comm=$(cat "/proc/$pid/comm" 2>/dev/null)
+      [[ $comm == winedevice* || $comm == wineserver* || $comm == "Cortex Control"* ]] || others+="$comm($pid) "
+    done
+    if [[ -n $others ]]; then
+      add WARN "QC in use" "opened by $others; close other editors first"
+    elif [[ -n $owners ]]; then
+      add OK "QC in use" "by Cortex Control"
+    else
+      add OK "QC in use" "no"
+    fi
+  done <<<"$nodes"
+fi
+
+# --- Desktop integration ----------------------------------------------------
+if app_running; then
+  add OK "App session" "running"
+else
+  add OK "App session" "not running"
+fi
+
+if [[ -f $HYPR_RULE_FILE ]] && grep -qF "$HYPR_REQUIRE_LINE" "$HYPR_DIR/hyprland.lua" 2>/dev/null; then
+  add OK "Hyprland rule" "$HYPR_RULE_FILE"
+elif grep -q "$WINDOW_CLASS" "$HYPR_DIR/hyprland.lua" 2>/dev/null; then
+  add OK "Hyprland rule" "your own rule in hyprland.lua"
+else
+  add WARN "Hyprland rule" "missing; the window may tile and get cropped (run cortex-control-setup)"
+fi
+
+if curl --fail --silent --head --connect-timeout 2 --max-time 5 "$CLOUD_CHECK_URL" >/dev/null 2>&1; then
+  add OK "Neural DSP cloud" "reachable"
+else
+  add WARN "Neural DSP cloud" "unreachable; cloud features will be offline"
+fi
+
+[[ -f $STATE_DIR/last-run.log ]] && add OK "Last run log" "$STATE_DIR/last-run.log"
+
+# --- Report -------------------------------------------------------------------
+failed=0
+for r in "${results[@]}"; do [[ ${r%%$'\t'*} == FAIL ]] && failed=1; done
+
+if (( json )); then
+  printf '%s\n' "${results[@]}" | jq -R -s --argjson failed "$failed" '
+    split("\n") | map(select(length > 0) | split("\t") | {level: .[0], check: .[1], detail: .[2]})
+    | {ok: ($failed == 0), checks: .}'
+else
+  for r in "${results[@]}"; do
+    IFS=$'\t' read -r level check detail <<<"$r"
+    case $level in
+      OK) color=32 ;;
+      WARN) color=33 ;;
+      *) color=31 ;;
+    esac
+    printf '\033[1;%sm[%-4s]\033[0m %-30s %s\n' "$color" "$level" "$check" "$detail"
+  done
+  echo
+  echo "Doctor did not start Wine or open the Quad Cortex."
+  echo "Firmware: update over Wi-Fi on the QC, never through Cortex Control."
+fi
+
+exit "$failed"

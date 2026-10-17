@@ -1,0 +1,243 @@
+#!/bin/bash
+
+# Per-user setup for Cortex Control on Omarchy: pinned GE-Proton, a dedicated
+# Wine prefix, the official Neural DSP installer, an app icon and a Hyprland
+# window rule. Safe to re-run; finished steps are skipped.
+
+set -euo pipefail
+
+_here="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+if [[ -f $_here/../lib/cortex-control-omarchy.sh ]]; then
+  source "$_here/../lib/cortex-control-omarchy.sh"
+else
+  source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
+fi
+
+usage() {
+  cat <<EOF
+Usage: cortex-control-setup [--installer PATH] [--silent] [--no-hypr]
+
+  --installer PATH  Use this copy of "$CC_INSTALLER_NAME". By default it is looked
+                    for in your Downloads folder, then downloaded from Neural DSP.
+  --silent          Install without showing Neural DSP's setup wizard. This
+                    accepts their license agreement for you, so only use it if
+                    you have already read and accepted it.
+  --no-hypr         Don't add the Hyprland window rule.
+EOF
+}
+
+installer=""
+mode=""
+hypr=1
+while (( $# > 0 )); do
+  case "$1" in
+    --installer) installer="${2:?--installer needs a path}"; shift 2 ;;
+    --silent) mode="silent"; shift ;;
+    --no-hypr) hypr=0; shift ;;
+    -h | --help) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+done
+
+refuse_root
+for cmd in umu-run curl sha256sum sha512sum tar jq; do
+  command -v "$cmd" >/dev/null || die "$cmd is missing. Install the cortex-control-omarchy package."
+done
+app_running && die "Cortex Control is running. Close it first."
+
+cat <<'EOF'
+
+  Cortex Control for Omarchy (unofficial, not affiliated with Neural DSP)
+
+  !! Never update firmware through Cortex Control under Proton. A failed update
+  !! can leave your Quad Cortex unusable. Update over Wi-Fi on the device itself.
+  !! Back up your Quad Cortex before editing presets.
+
+EOF
+
+get_proton() {
+  if [[ -x $PROTON_DIR/proton ]]; then
+    info "$PROTON_VERSION is already installed"
+    return
+  fi
+  info "Downloading $PROTON_VERSION (about 560 MB)"
+  local dl="$DATA_DIR/proton/.download"
+  mkdir -p "$dl"
+  local tarball="$dl/$PROTON_VERSION-x86_64.tar.gz"
+  curl --fail --location --retry 3 --progress-bar -o "$tarball.part" "$PROTON_URL"
+  mv "$tarball.part" "$tarball"
+  if [[ $(sha512sum "$tarball" | cut -d' ' -f1) != "$PROTON_SHA512" ]]; then
+    rm -f "$tarball"
+    die "$PROTON_VERSION failed its SHA-512 check. Nothing was installed; try again."
+  fi
+  tar -xzf "$tarball" -C "$DATA_DIR/proton"
+  rm -rf "$dl"
+  [[ -x $PROTON_DIR/proton ]] || die "$PROTON_VERSION did not unpack as expected."
+}
+
+find_installer() {
+  if [[ -n $installer ]]; then
+    [[ -f $installer ]] || die "installer not found: $installer"
+    installer="$(realpath "$installer")"
+  else
+    local downloads cache="${XDG_CACHE_HOME:-$HOME/.cache}/cortex-control-omarchy"
+    downloads="$(xdg-user-dir DOWNLOAD 2>/dev/null || echo "$HOME/Downloads")"
+    if [[ -f $downloads/$CC_INSTALLER_NAME ]]; then
+      installer="$downloads/$CC_INSTALLER_NAME"
+    elif [[ -f $cache/$CC_INSTALLER_NAME ]]; then
+      installer="$cache/$CC_INSTALLER_NAME"
+    else
+      info "Downloading the official installer from Neural DSP"
+      mkdir -p "$cache"
+      installer="$cache/$CC_INSTALLER_NAME"
+      curl --fail --location --retry 3 --progress-bar -o "$installer.part" "$CC_INSTALLER_URL" ||
+        die "download failed. Get it from https://neuraldsp.com/downloads and pass --installer PATH."
+      mv "$installer.part" "$installer"
+    fi
+  fi
+  if [[ $(sha256sum "$installer" | cut -d' ' -f1) != "$CC_INSTALLER_SHA256" ]]; then
+    die "$installer is not the tested Cortex Control $CC_VERSION installer (SHA-256 mismatch)."
+  fi
+  info "Verified $installer"
+}
+
+create_prefix() {
+  if [[ -f $PREFIX/system.reg ]]; then
+    info "Wine prefix exists at $PREFIX"
+    return
+  fi
+  info "Creating the Wine prefix (the first run also downloads umu's Steam runtime)"
+  mkdir -p "$PREFIX"
+  # With no program to run, umu only creates the prefix and exits non-zero.
+  umu "" >/dev/null 2>&1 || true
+  [[ -f $PREFIX/system.reg ]] || die "creating the prefix failed. Run with UMU_LOG=1 to see why."
+}
+
+install_app() {
+  if [[ -f $APP ]]; then
+    info "Cortex Control is already installed"
+    return
+  fi
+  find_installer
+
+  if [[ -z $mode ]]; then
+    if [[ -t 0 ]] && command -v gum >/dev/null; then
+      choice=$(gum choose --header "Install Cortex Control" \
+        "Show Neural DSP's setup wizard and license" \
+        "Install silently (I have already accepted Neural DSP's license)")
+      [[ $choice == Install\ silently* ]] && mode="silent" || mode="wizard"
+    else
+      mode="wizard"
+    fi
+  fi
+
+  if [[ $mode == "silent" ]]; then
+    info "Installing Cortex Control silently"
+    umu "$installer" /exenoui /qn >/dev/null 2>&1 || true
+  else
+    info "Opening Neural DSP's setup wizard. Accept the license and keep the defaults."
+    umu "$installer" >/dev/null 2>&1 || true
+  fi
+
+  [[ -f $APP ]] || die "Cortex Control.exe was not found after the installer ran. Did it finish?"
+  if [[ $(sha256sum "$APP" | cut -d' ' -f1) == "$CC_APP_SHA256" ]]; then
+    info "Installed Cortex Control $CC_VERSION (verified)"
+  else
+    warn "Cortex Control.exe does not match the tested $CC_VERSION build."
+  fi
+}
+
+clean_wine_menu() {
+  # Wine's installer integration adds its own menu entries; the package
+  # provides a single proper one instead.
+  local data="${XDG_DATA_HOME:-$HOME/.local/share}" desktop
+  rm -rf "$data/applications/wine/Programs/Cortex Control"
+  rm -f "$data/desktop-directories/wine-Programs-Cortex Control.directory"
+  desktop="$(xdg-user-dir DESKTOP 2>/dev/null || echo "$HOME/Desktop")"
+  rm -f "$desktop/Cortex Control.desktop" "$desktop/Cortex Control.lnk"
+}
+
+install_icon() {
+  if compgen -G "$ICON_DIR/*/apps/cortex-control.png" >/dev/null; then
+    return
+  fi
+  if ! command -v wrestool >/dev/null || ! command -v icotool >/dev/null; then
+    warn "icoutils is missing; the menu entry will use a generic icon."
+    return
+  fi
+  # Use the icon from your own installed copy of the app.
+  local tmp png size ico
+  tmp=$(mktemp -d)
+  wrestool -x -t 14 -o "$tmp" "$APP" 2>/dev/null || true
+  for ico in "$tmp"/*.ico; do
+    [[ -f $ico ]] && icotool -x -o "$tmp" "$ico" 2>/dev/null || true
+  done
+  for png in "$tmp"/*.png; do
+    [[ -f $png ]] || continue
+    # icotool names files like name_1_256x256x32.png
+    size=$(grep -oE '_[0-9]+x[0-9]+x[0-9]+\.png$' <<<"$png" | cut -d_ -f2 | cut -dx -f1)
+    [[ -n $size ]] || continue
+    install -Dm644 "$png" "$ICON_DIR/${size}x${size}/apps/cortex-control.png"
+  done
+  rm -rf "$tmp"
+  gtk-update-icon-cache -f -t "$ICON_DIR" >/dev/null 2>&1 || true
+  info "Added the app icon"
+}
+
+install_hypr_rule() {
+  (( hypr )) || return 0
+  local conf="$HYPR_DIR/hyprland.lua"
+  if [[ ! -f $conf ]]; then
+    warn "No $conf found; skipping the Hyprland window rule."
+    return
+  fi
+  if grep -q "$WINDOW_CLASS" "$conf"; then
+    warn "$conf already has its own $WINDOW_CLASS rule; leaving it alone."
+    return
+  fi
+  install -Dm644 "$SHARE_DIR/hypr/cortex-control.lua" "$HYPR_RULE_FILE"
+  if ! grep -qF "$HYPR_REQUIRE_LINE" "$conf"; then
+    cp "$conf" "$conf.bak.$(date +%s)"
+    printf '\n-- Cortex Control window rule (cortex-control-setup; removed by cortex-control-uninstall)\n%s\n' \
+      "$HYPR_REQUIRE_LINE" >>"$conf"
+  fi
+  if command -v hyprctl >/dev/null && hyprctl version >/dev/null 2>&1; then
+    hyprctl reload >/dev/null
+    local errors
+    errors=$(hyprctl configerrors 2>/dev/null | grep -v '^$' || true)
+    [[ -z $errors ]] || warn "Hyprland reports config errors: $errors"
+  fi
+  info "Added the Hyprland window rule ($HYPR_RULE_FILE)"
+}
+
+check_qc_access() {
+  local nodes
+  nodes=$(qc_hidraw_nodes)
+  if [[ -z $nodes ]]; then
+    warn "No Quad Cortex connected right now. Plug it in before starting Cortex Control."
+    return
+  fi
+  while read -r node _ name; do
+    if [[ -r $node && -w $node ]]; then
+      info "$name is connected and accessible ($node)"
+    else
+      warn "$name ($node) is not accessible. Is the cortex-control-omarchy package installed? Try replugging it."
+    fi
+  done <<<"$nodes"
+}
+
+get_proton
+create_prefix
+install_app
+clean_wine_menu
+install_icon
+install_hypr_rule
+check_qc_access
+
+cat <<'EOF'
+
+Done. Start "Cortex Control" from the Omarchy app launcher (Super + Space), or run: cortex-control
+Check the setup any time with: cortex-control-doctor
+
+!! Reminder: never update firmware from Cortex Control. Use Wi-Fi updates on the QC.
+EOF

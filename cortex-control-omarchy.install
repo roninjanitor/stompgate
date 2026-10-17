@@ -1,0 +1,29 @@
+_reload_udev() {
+  udevadm control --reload-rules || true
+  # Apply the rule to a Quad Cortex that is already plugged in.
+  udevadm trigger --action=change --subsystem-match=hidraw --property-match=ID_VENDOR_ID=152a || true
+}
+
+post_install() {
+  _reload_udev
+  cat <<'MSG'
+
+Cortex Control for Omarchy:
+  1. Run as your user: cortex-control-setup
+  2. Start "Cortex Control" from the app launcher, or run: cortex-control
+  3. Check things any time with: cortex-control-doctor
+
+Neural DSP's installer and app are not included; setup uses your own copy.
+Never update firmware through Cortex Control. Use Wi-Fi updates on the QC.
+
+MSG
+}
+
+post_upgrade() {
+  _reload_udev
+}
+
+post_remove() {
+  udevadm control --reload-rules || true
+  echo "Per-user files (prefix, Proton, Hyprland rule) are kept. Remove them first with cortex-control-uninstall."
+}

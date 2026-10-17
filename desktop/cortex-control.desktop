@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Cortex Control
+GenericName=Quad Cortex Editor
+Comment=Edit presets and settings on the Neural DSP Quad Cortex
+Exec=cortex-control
+Icon=cortex-control
+Terminal=false
+StartupNotify=true
+StartupWMClass=steam_app_cortexcontrol
+Categories=AudioVideo;Audio;Music;
+Keywords=Neural;DSP;Quad;Cortex;QC;guitar;preset;editor;

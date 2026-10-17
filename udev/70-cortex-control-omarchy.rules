@@ -1,0 +1,6 @@
+# Give the active local user access to the Neural DSP Quad Cortex (152a:880a)
+# and Quad Cortex mini (152a:892f) HID control interface, nothing else.
+# Numbered 70 so systemd's 73-seat-late rule applies the uaccess tag.
+# Based on taylortek91/cortex-control-wine.
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", ATTRS{idVendor}=="152a", ATTRS{idProduct}=="880a", TAG+="uaccess"
+SUBSYSTEM=="hidraw", KERNEL=="hidraw*", ATTRS{idVendor}=="152a", ATTRS{idProduct}=="892f", TAG+="uaccess"

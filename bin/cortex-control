@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Launch Neural DSP Cortex Control through umu-launcher and the pinned GE-Proton,
+# or focus its window if it is already running.
+
+set -euo pipefail
+
+_here="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+if [[ -f $_here/../lib/cortex-control-omarchy.sh ]]; then
+  source "$_here/../lib/cortex-control-omarchy.sh"
+else
+  source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
+fi
+
+case "${1:-}" in
+  -h | --help)
+    cat <<'EOF'
+Usage: cortex-control
+
+Starts Cortex Control, or focuses its window if it is already open.
+Related commands: cortex-control-setup, cortex-control-doctor, cortex-control-uninstall
+EOF
+    exit 0
+    ;;
+esac
+
+refuse_root
+
+if [[ ! -f $APP || ! -x $PROTON_DIR/proton ]]; then
+  # From the app launcher there is no terminal, so open one for the setup.
+  if [[ ! -t 0 ]] && command -v omarchy-launch-floating-terminal-with-presentation >/dev/null; then
+    exec omarchy-launch-floating-terminal-with-presentation cortex-control-setup
+  fi
+  die "Cortex Control is not set up yet. Run: cortex-control-setup"
+fi
+
+# Focus an existing window instead of starting a second copy on the same QC.
+address=$(hyprctl clients -j 2>/dev/null | jq -r --arg c "$WINDOW_CLASS" '[.[] | select(.class == $c)][0].address // empty')
+if [[ -n $address ]]; then
+  hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null
+  exit 0
+fi
+if app_running; then
+  notify "Cortex Control is already starting or closing. Try again in a few seconds."
+  exit 1
+fi
+
+# Cortex Control may ask PowerShell whether the network is up, and Wine's
+# PowerShell is a stub. Check on the Linux side and hand the answer to the
+# powershell.bat shim (taylortek91/cortex-control-wine).
+online=0
+if curl --fail --silent --head --connect-timeout 2 --max-time 5 "$CLOUD_CHECK_URL" >/dev/null 2>&1; then
+  online=1
+fi
+
+mkdir -p "$STATE_DIR"
+log="$STATE_DIR/last-run.log"
+shim_dir="$SHARE_DIR/shims"
+
+cd "$APP_DIR"
+export WINEPREFIX="$PREFIX" PROTONPATH="$PROTON_DIR" GAMEID
+export PROTON_ENABLE_HIDRAW="$QC_PROTON_HIDRAW"
+export WINEPATH="Z:${shim_dir//\//\\}"
+export CORTEX_CONTROL_HOST_ONLINE="$online"
+export WINEDEBUG="${WINEDEBUG:--all}"
+# Wine's Wayland driver gives the window a Windows-style frame and breaks
+# resizing; keep it on XWayland.
+unset PROTON_ENABLE_WAYLAND PROTON_USE_WAYLAND
+
+if [[ -t 1 ]]; then
+  umu-run "$APP" "$@" 2>&1 | tee "$log"
+else
+  exec umu-run "$APP" "$@" >"$log" 2>&1
+fi

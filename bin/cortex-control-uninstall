@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# Remove what cortex-control-setup created for this user. The system package
+# (udev rule, commands, menu entry) is removed separately with pacman.
+
+set -euo pipefail
+
+_here="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+if [[ -f $_here/../lib/cortex-control-omarchy.sh ]]; then
+  source "$_here/../lib/cortex-control-omarchy.sh"
+else
+  source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
+fi
+
+usage() {
+  cat <<EOF
+Usage: cortex-control-uninstall [--keep-prefix] [--yes]
+
+Removes the Hyprland window rule, the app icon and the launcher log, and by
+default also the Wine prefix (Cortex Control and its settings) and the pinned
+$PROTON_VERSION.
+
+  --keep-prefix  Keep the prefix and Proton, so cortex-control-setup can restore
+                 the integration later without reinstalling.
+  --yes          Don't ask for confirmation.
+
+Presets live on your Quad Cortex, not in the prefix. Files you exported from
+Cortex Control into its Documents folder are deleted with the prefix.
+EOF
+}
+
+keep_prefix=0
+yes=0
+while (( $# > 0 )); do
+  case "$1" in
+    --keep-prefix) keep_prefix=1; shift ;;
+    --yes) yes=1; shift ;;
+    -h | --help) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+done
+
+refuse_root
+app_running && die "Cortex Control is running. Close it first."
+
+# Only delete directories that are really ours.
+safe_rm_dir() {
+  local dir="$1" expect="$2"
+  [[ -e $dir ]] || return 0
+  [[ ! -L $dir ]] || die "refusing to delete a symlink: $dir"
+  [[ $(realpath "$dir") == *"/cortex-control-omarchy/$expect" ]] || die "refusing to delete unexpected path: $dir"
+  [[ $(stat -c %u "$dir") == "$EUID" ]] || die "refusing to delete a directory you don't own: $dir"
+  rm -rf -- "$dir"
+}
+
+exports="$PREFIX/drive_c/users/steamuser/Documents"
+echo "This removes:"
+echo "  - the Hyprland window rule ($HYPR_RULE_FILE and its line in hyprland.lua)"
+echo "  - the Cortex Control icon and launcher log"
+if (( ! keep_prefix )); then
+  echo "  - the Wine prefix: $PREFIX"
+  echo "  - $PROTON_VERSION: $DATA_DIR/proton"
+  if [[ -d $exports ]] && [[ -n $(find "$exports" -type f -print -quit 2>/dev/null) ]]; then
+    warn "Files you exported in Cortex Control are in $exports and will be deleted."
+  fi
+fi
+if (( ! yes )); then
+  [[ -t 0 ]] || die "run this in a terminal, or pass --yes."
+  read -r -p "Continue? [y/N] " answer
+  [[ $answer =~ ^[Yy]$ ]] || exit 1
+fi
+
+# Hyprland rule: our file plus the one require line setup appended.
+conf="$HYPR_DIR/hyprland.lua"
+if [[ -f $conf ]] && grep -qF "$HYPR_REQUIRE_LINE" "$conf"; then
+  cp "$conf" "$conf.bak.$(date +%s)"
+  grep -vF -e "$HYPR_REQUIRE_LINE" -e "-- Cortex Control window rule (cortex-control-setup" "$conf" >"$conf.tmp"
+  mv "$conf.tmp" "$conf"
+fi
+rm -f "$HYPR_RULE_FILE"
+if command -v hyprctl >/dev/null && hyprctl version >/dev/null 2>&1; then
+  hyprctl reload >/dev/null || true
+fi
+
+rm -f "$ICON_DIR"/*/apps/cortex-control.png
+gtk-update-icon-cache -f -t "$ICON_DIR" >/dev/null 2>&1 || true
+rm -rf -- "$STATE_DIR"
+
+if (( ! keep_prefix )); then
+  safe_rm_dir "$PREFIX" "prefix"
+  safe_rm_dir "$DATA_DIR/proton" "proton"
+  rmdir "$DATA_DIR" 2>/dev/null || true
+fi
+
+info "Removed Cortex Control's per-user files."
+if pacman -Q cortex-control-omarchy >/dev/null 2>&1; then
+  echo "To remove the system package too (udev rule, commands, menu entry):"
+  echo "  sudo pacman -R cortex-control-omarchy"
+fi
