@@ -23,17 +23,20 @@ Usage: cortex-control-setup [--installer PATH] [--silent] [--no-hypr]
                     accepts their license agreement for you, so only use it if
                     you have already read and accepted it.
   --no-hypr         Don't add the Hyprland window rule.
+  --no-plugin       Don't add the Quad Cortex widget to the Omarchy bar.
 EOF
 }
 
 installer=""
 mode=""
 hypr=1
+plugin=1
 while (( $# > 0 )); do
   case "$1" in
     --installer) installer="${2:?--installer needs a path}"; shift 2 ;;
     --silent) mode="silent"; shift ;;
     --no-hypr) hypr=0; shift ;;
+    --no-plugin) plugin=0; shift ;;
     -h | --help) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
   esac
@@ -43,7 +46,6 @@ refuse_root
 for cmd in umu-run curl sha256sum sha512sum tar jq; do
   command -v "$cmd" >/dev/null || die "$cmd is missing. Install the cortex-control-omarchy package."
 done
-app_running && die "Cortex Control is running. Close it first."
 
 cat <<'EOF'
 
@@ -106,6 +108,7 @@ create_prefix() {
     info "Wine prefix exists at $PREFIX"
     return
   fi
+  app_running && die "Cortex Control is running. Close it first."
   info "Creating the Wine prefix (the first run also downloads umu's Steam runtime)"
   mkdir -p "$PREFIX"
   # With no program to run, umu only creates the prefix and exits non-zero.
@@ -118,6 +121,7 @@ install_app() {
     info "Cortex Control is already installed"
     return
   fi
+  app_running && die "Cortex Control is running. Close it first."
   find_installer
 
   if [[ -z $mode ]]; then
@@ -195,6 +199,10 @@ install_hypr_rule() {
     warn "$conf already has its own $WINDOW_CLASS rule; leaving it alone."
     return
   fi
+  if cmp -s "$SHARE_DIR/hypr/cortex-control.lua" "$HYPR_RULE_FILE" && grep -qF "$HYPR_REQUIRE_LINE" "$conf"; then
+    info "The Hyprland window rule is already in place"
+    return
+  fi
   install -Dm644 "$SHARE_DIR/hypr/cortex-control.lua" "$HYPR_RULE_FILE"
   if ! grep -qF "$HYPR_REQUIRE_LINE" "$conf"; then
     cp "$conf" "$conf.bak.$(date +%s)"
@@ -208,6 +216,32 @@ install_hypr_rule() {
     [[ -z $errors ]] || warn "Hyprland reports config errors: $errors"
   fi
   info "Added the Hyprland window rule ($HYPR_RULE_FILE)"
+}
+
+install_plugin() {
+  (( plugin )) || return 0
+  command -v omarchy >/dev/null || return 0
+  local src="$SHARE_DIR/plugin"
+  if [[ -d $PLUGIN_DIR ]] && diff -rq "$src" "$PLUGIN_DIR" >/dev/null 2>&1; then
+    info "The Quad Cortex bar widget is up to date"
+    return
+  fi
+  local fresh=1
+  [[ -d $PLUGIN_DIR ]] && fresh=0
+  if (( fresh )) && [[ -t 0 ]] && command -v gum >/dev/null; then
+    gum confirm "Add a Quad Cortex widget to the Omarchy bar?" || return 0
+  fi
+  # Omarchy rejects symlinked plugins, so install a copy.
+  mkdir -p "$PLUGIN_DIR"
+  cp "$src/manifest.json" "$src/Panel.qml" "$PLUGIN_DIR/"
+  omarchy plugin validate "$PLUGIN_DIR" >/dev/null || { warn "The bar widget failed Omarchy's validation; skipping it."; rm -rf -- "$PLUGIN_DIR"; return; }
+  omarchy-shell -q shell rescanPlugins
+  if (( fresh )); then
+    omarchy plugin enable "$PLUGIN_ID" >/dev/null 2>&1 || warn "Could not enable the bar widget; run: omarchy plugin enable $PLUGIN_ID"
+    info "Added the Quad Cortex widget to the Omarchy bar"
+  else
+    info "Updated the Quad Cortex bar widget. Run 'omarchy restart shell' to load the new version."
+  fi
 }
 
 check_qc_access() {
@@ -232,6 +266,7 @@ install_app
 clean_wine_menu
 install_icon
 install_hypr_rule
+install_plugin
 check_qc_access
 
 cat <<'EOF'

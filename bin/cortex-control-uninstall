@@ -56,7 +56,7 @@ safe_rm_dir() {
 exports="$PREFIX/drive_c/users/steamuser/Documents"
 echo "This removes:"
 echo "  - the Hyprland window rule ($HYPR_RULE_FILE and its line in hyprland.lua)"
-echo "  - the Cortex Control icon and launcher log"
+echo "  - the Cortex Control icon, launcher log and Quad Cortex bar widget"
 if (( ! keep_prefix )); then
   echo "  - the Wine prefix: $PREFIX"
   echo "  - $PROTON_VERSION: $DATA_DIR/proton"
@@ -80,6 +80,12 @@ fi
 rm -f "$HYPR_RULE_FILE"
 if command -v hyprctl >/dev/null && hyprctl version >/dev/null 2>&1; then
   hyprctl reload >/dev/null || true
+fi
+
+if [[ -d $PLUGIN_DIR ]]; then
+  omarchy plugin disable "$PLUGIN_ID" >/dev/null 2>&1 || true
+  rm -rf -- "$PLUGIN_DIR"
+  omarchy-shell -q shell rescanPlugins
 fi
 
 rm -f "$ICON_DIR"/*/apps/cortex-control.png

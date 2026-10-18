@@ -1,0 +1,298 @@
+#!/bin/bash
+
+# Quad Cortex audio and MIDI controls that don't need Cortex Control: PipeWire
+# profile and volume, and Neural DSP's documented incoming MIDI messages
+# (Quad Cortex / QC mini manual 4.1.1, "Incoming MIDI CC List").
+
+set -euo pipefail
+
+_here="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+if [[ -f $_here/../lib/cortex-control-omarchy.sh ]]; then
+  source "$_here/../lib/cortex-control-omarchy.sh"
+else
+  source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
+fi
+
+usage() {
+  cat <<'EOF'
+Usage: cortex-control-qc [--osd] <command> [args]
+
+  --osd   Also show the result in Omarchy's on-screen display (for keybindings)
+
+Audio (PipeWire):
+  audio-status                   JSON: card profile, output/input volume and mute
+  pro-audio on|off               Pro Audio profile: plain AUX0-7 channels for DAWs
+  volume output|input <0-150>    Set the QC's output or input volume in percent
+  mute output|input              Toggle mute
+
+MIDI (needs Settings > Device > MIDI > MIDI OVER USB on the QC):
+  midi-status                    JSON: whether the QC's MIDI port is available
+  scene A-H|next|prev            Recall a scene (CC#43). On a QC mini, E-H are page II A-D.
+  tuner open|close|toggle        Open or close the tuner (CC#45)
+  gig-view open|close            Open or close Gig View (CC#46)
+  tap                            Tap tempo (CC#44)
+  preset <bank><slot> [setlist]  Load a preset, e.g. "preset 38C" (CC#0, CC#32, PC).
+                                 setlist: 0 = Factory, 1 = My Presets (default), 2-12 = folders
+
+The MIDI channel is $CORTEX_CONTROL_MIDI_CHANNEL (1-16, default 1). Set the QC's
+MIDI CHANNEL to match, or to OMNI. CORTEX_CONTROL_MIDI_DRY_RUN=1 prints the
+messages instead of sending them.
+EOF
+}
+
+# --- Audio ------------------------------------------------------------------
+
+qc_card() {
+  pactl -f json list cards 2>/dev/null |
+    jq -c '[.[] | select(.name | test("Neural_DSP_Quad_Cortex"))][0] // empty'
+}
+
+# Print the sink or source name that belongs to the QC.
+qc_node() {
+  local kind="$1" # sinks | sources
+  pactl -f json list "$kind" 2>/dev/null |
+    jq -r '[.[] | select(.name | test("Neural_DSP_Quad_Cortex")) | select(.name | endswith(".monitor") | not)][0].name // empty'
+}
+
+audio_status() {
+  local card sinks sources
+  card=$(qc_card)
+  if [[ -z $card ]]; then
+    echo '{"present":false}'
+    return
+  fi
+  sinks=$(pactl -f json list sinks 2>/dev/null)
+  sources=$(pactl -f json list sources 2>/dev/null)
+  jq -n -c --argjson card "$card" --argjson sinks "$sinks" --argjson sources "$sources" '
+    def qc($list): [$list[] | select(.name | test("Neural_DSP_Quad_Cortex")) | select(.name | endswith(".monitor") | not)][0];
+    def pct($node): if $node == null then null
+      else ([$node.volume[] | .value_percent | rtrimstr("%") | tonumber] | add / length | round) end;
+    qc($sinks) as $out | qc($sources) as $in |
+    {
+      present: true,
+      card: $card.name,
+      profile: $card.active_profile,
+      proAudio: ($card.active_profile == "pro-audio"),
+      output: (if $out then {name: $out.name, volume: pct($out), muted: $out.mute} else null end),
+      input: (if $in then {name: $in.name, volume: pct($in), muted: $in.mute} else null end)
+    }'
+}
+
+pro_audio() {
+  local card name profile
+  card=$(qc_card)
+  [[ -n $card ]] || die "the Quad Cortex isn't connected as an audio device."
+  name=$(jq -r '.name' <<<"$card")
+  case "${1:-}" in
+    on) profile="pro-audio" ;;
+    off)
+      # Back to the best normal profile, as WirePlumber would pick by default.
+      profile=$(jq -r '.profiles | to_entries
+        | map(select(.key != "pro-audio" and .key != "off" and .value.available))
+        | max_by(.value.priority).key // empty' <<<"$card")
+      [[ -n $profile ]] || die "no other profile available."
+      ;;
+    *) die "usage: cortex-control-qc pro-audio on|off" ;;
+  esac
+  pactl set-card-profile "$name" "$profile"
+}
+
+node_for() {
+  case "$1" in
+    output) qc_node sinks ;;
+    input) qc_node sources ;;
+    *) die "expected output or input" ;;
+  esac
+}
+
+set_volume() {
+  local which="$1" percent="$2" node
+  [[ $percent =~ ^[0-9]+$ ]] && (( percent <= 150 )) || die "volume must be 0-150"
+  node=$(node_for "$which")
+  [[ -n $node ]] || die "the Quad Cortex $which isn't available."
+  if [[ $which == output ]]; then
+    pactl set-sink-volume "$node" "$percent%"
+  else
+    pactl set-source-volume "$node" "$percent%"
+  fi
+}
+
+toggle_mute() {
+  local which="$1" node
+  node=$(node_for "$which")
+  [[ -n $node ]] || die "the Quad Cortex $which isn't available."
+  if [[ $which == output ]]; then
+    pactl set-sink-mute "$node" toggle
+  else
+    pactl set-source-mute "$node" toggle
+  fi
+}
+
+# --- Feedback and remembered state ------------------------------------------
+
+osd=0
+QC_GLYPH="󰐰"
+
+# Report to the terminal, or to the OSD when run from a keybinding.
+say() {
+  if (( osd )) && command -v omarchy-osd >/dev/null; then
+    omarchy-osd -i "$QC_GLYPH" -m "$*" >/dev/null 2>&1 || true
+  else
+    echo "$*"
+  fi
+}
+
+fail() {
+  if (( osd )) && command -v omarchy-osd >/dev/null; then
+    omarchy-osd -i "$QC_GLYPH" -m "$*" >/dev/null 2>&1 || true
+  fi
+  die "$*"
+}
+
+# MIDI is one-way: the QC never reports its scene or tuner. Remember what was
+# last sent so toggles and next/prev work, shared by keybindings and the widget.
+MIDI_STATE="$STATE_DIR/midi-state.json"
+
+state_get() {
+  jq -r --arg k "$1" '.[$k] // empty' "$MIDI_STATE" 2>/dev/null || true
+}
+
+state_set() {
+  mkdir -p "$STATE_DIR"
+  local current
+  current=$(cat "$MIDI_STATE" 2>/dev/null || echo '{}')
+  jq -c --arg k "$1" --argjson v "$2" '.[$k] = $v' <<<"$current" >"$MIDI_STATE.tmp" 2>/dev/null &&
+    mv "$MIDI_STATE.tmp" "$MIDI_STATE"
+}
+
+is_mini() {
+  qc_hidraw_nodes | grep -q 'mini'
+}
+
+scene_name() {
+  local index="$1" letters="ABCDEFGH"
+  if is_mini; then
+    # The mini's eight scenes are A-D on footswitch pages I and II.
+    echo "$( ((index < 4)) && echo I || echo II)·${letters:index%4:1}"
+  else
+    echo "${letters:index:1}"
+  fi
+}
+
+# --- MIDI -------------------------------------------------------------------
+
+# Raw MIDI device of the QC, e.g. hw:5,0,0. Sending to its ALSA sequencer
+# port without a subscription never opens the hardware, so the messages
+# were silently dropped; the raw device delivers them.
+midi_port() {
+  amidi -l 2>/dev/null | awk '/Quad Cortex/ { print $2; exit }'
+}
+
+midi_status() {
+  local port scene tuner
+  port=$(midi_port)
+  scene=$(state_get scene)
+  tuner=$(state_get tunerOpen)
+  jq -n -c --arg port "$port" --arg channel "${CORTEX_CONTROL_MIDI_CHANNEL:-1}" \
+    --arg scene "${scene:--1}" --arg tuner "${tuner:-false}" \
+    '{present: ($port != ""), port: $port, channel: ($channel | tonumber),
+      scene: ($scene | tonumber), tunerOpen: ($tuner == "true")}'
+}
+
+# Send one or more MIDI messages, given as space-separated hex bytes.
+midi_send() {
+  if [[ ${CORTEX_CONTROL_MIDI_DRY_RUN:-} == 1 ]]; then
+    printf '%s\n' "$@"
+    return
+  fi
+  local port
+  port=$(midi_port)
+  [[ -n $port ]] || fail "Quad Cortex MIDI isn't available. Is it on, with MIDI OVER USB enabled?"
+  local msg
+  mkdir -p "$STATE_DIR"
+  for msg in "$@"; do
+    printf '%s %s -> %s\n' "$(date '+%F %T')" "$msg" "$port" >>"$STATE_DIR/qc.log"
+    amidi -p "$port" -S "$msg" 2>/dev/null ||
+      fail "Couldn't send to the Quad Cortex. Is another program using its MIDI port?"
+    # Space out messages; the QC can stall on rapid bursts.
+    sleep 0.1
+  done
+}
+
+channel_nibble() {
+  local ch="${CORTEX_CONTROL_MIDI_CHANNEL:-1}"
+  [[ $ch =~ ^[0-9]+$ ]] && (( ch >= 1 && ch <= 16 )) || die "CORTEX_CONTROL_MIDI_CHANNEL must be 1-16"
+  printf '%X' $((ch - 1))
+}
+
+cc() { printf 'B%s %02X %02X' "$(channel_nibble)" "$1" "$2"; }
+pc() { printf 'C%s %02X' "$(channel_nibble)" "$1"; }
+
+scene() {
+  local arg="${1^^}" index last
+  last=$(state_get scene)
+  case "$arg" in
+    NEXT) index=$(( (${last:--1} + 1) % 8 )) ;;
+    PREV) index=$(( (${last:-0} + 7) % 8 )) ;;
+    [A-H]) index=$(($(printf '%d' "'$arg") - 65)) ;;
+    *) die "scene must be A-H, next or prev" ;;
+  esac
+  midi_send "$(cc 43 "$index")"
+  state_set scene "$index"
+  say "Scene $(scene_name "$index")"
+}
+
+tuner() {
+  local want="$1"
+  if [[ $want == toggle ]]; then
+    [[ $(state_get tunerOpen) == true ]] && want=close || want=open
+  fi
+  case "$want" in
+    open) midi_send "$(cc 45 127)"; state_set tunerOpen true; say "Tuner on" ;;
+    close) midi_send "$(cc 45 0)"; state_set tunerOpen false; say "Tuner off" ;;
+    *) die "expected open, close or toggle" ;;
+  esac
+}
+
+open_close() {
+  local number="$1" state="$2"
+  case "$state" in
+    open) midi_send "$(cc "$number" 127)" ;;
+    close) midi_send "$(cc "$number" 0)" ;;
+    *) die "expected open or close" ;;
+  esac
+}
+
+# "38C" is bank 38, slot C: banks of four, so preset index (38 - 1) * 4 + 2.
+preset() {
+  local id="${1^^}" setlist="${2:-1}" bank slot index
+  [[ $id =~ ^([0-9]+)([A-D])$ ]] || die "preset must look like 38C (bank number and slot A-D)"
+  bank=${BASH_REMATCH[1]}
+  slot=$(($(printf '%d' "'${BASH_REMATCH[2]}") - 65))
+  (( bank >= 1 )) || die "bank numbers start at 1"
+  index=$(((bank - 1) * 4 + slot))
+  (( index <= 255 )) || die "preset $id is beyond the 256 presets a setlist can hold"
+  [[ $setlist =~ ^[0-9]+$ ]] && (( setlist <= 12 )) || die "setlist must be 0-12"
+  midi_send "$(cc 0 $((index / 128)))" "$(cc 32 "$setlist")" "$(pc $((index % 128)))"
+}
+
+if [[ ${1:-} == --osd ]]; then
+  osd=1
+  shift
+fi
+command="${1:-}"
+shift || true
+case "$command" in
+  audio-status) audio_status ;;
+  pro-audio) pro_audio "${1:-}" ;;
+  volume) set_volume "${1:-}" "${2:-}" ;;
+  mute) toggle_mute "${1:-}" ;;
+  midi-status) midi_status ;;
+  scene) scene "${1:-}" ;;
+  tuner) tuner "${1:-}" ;;
+  gig-view) open_close 46 "${1:-}" ;;
+  tap) midi_send "$(cc 44 127)"; say "Tap tempo" ;;
+  preset) preset "${1:-}" "${2:-}" ;;
+  -h | --help | "") usage ;;
+  *) usage >&2; exit 2 ;;
+esac

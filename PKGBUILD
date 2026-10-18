@@ -6,11 +6,12 @@
 
 pkgname=cortex-control-omarchy
 pkgver=0.1.0
-pkgrel=2
+pkgrel=8
 pkgdesc='Run Neural DSP Cortex Control (Quad Cortex editor) on Omarchy via umu-launcher and GE-Proton'
 arch=('any')
 license=('MIT')
 depends=(
+  'alsa-utils'
   'bash'
   'coreutils'
   'curl'
@@ -19,6 +20,7 @@ depends=(
   'icoutils'
   'jq'
   'libnotify'
+  'libpulse'
   'lsof'
   'procps-ng'
   'systemd'
@@ -44,6 +46,8 @@ package() {
   done
   install -Dm644 shims/powershell.bat "$share/shims/powershell.bat"
   install -Dm644 hypr/cortex-control.lua "$share/hypr/cortex-control.lua"
+  install -Dm644 plugin/manifest.json "$share/plugin/manifest.json"
+  install -Dm644 plugin/Panel.qml "$share/plugin/Panel.qml"
   install -Dm644 udev/70-cortex-control-omarchy.rules "$pkgdir/usr/lib/udev/rules.d/70-cortex-control-omarchy.rules"
   install -Dm644 desktop/cortex-control.desktop "$pkgdir/usr/share/applications/cortex-control.desktop"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"

@@ -12,13 +12,22 @@ else
   source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
 fi
 
+mode="show"
 case "${1:-}" in
+  --show) mode="show"; shift ;;
+  --hide) mode="hide"; shift ;;
+  --toggle) mode="toggle"; shift ;;
   -h | --help)
     cat <<'EOF'
-Usage: cortex-control
+Usage: cortex-control [--show | --hide | --toggle]
 
-Starts Cortex Control, or focuses its window if it is already open.
-Related commands: cortex-control-setup, cortex-control-doctor, cortex-control-uninstall
+Starts Cortex Control, or shows and focuses its window if it is already open.
+
+  --show    Bring the window to the current workspace and focus it (default)
+  --hide    Move the window to a hidden workspace. The app keeps running.
+  --toggle  Hide the window if it's on the current workspace, otherwise show it
+
+Related commands: cortex-control-setup, cortex-control-doctor, cortex-control-qc, cortex-control-uninstall
 EOF
     exit 0
     ;;
@@ -34,12 +43,26 @@ if [[ ! -f $APP || ! -x $PROTON_DIR/proton ]]; then
   die "Cortex Control is not set up yet. Run: cortex-control-setup"
 fi
 
-# Focus an existing window instead of starting a second copy on the same QC.
-address=$(hyprctl clients -j 2>/dev/null | jq -r --arg c "$WINDOW_CLASS" '[.[] | select(.class == $c)][0].address // empty')
-if [[ -n $address ]]; then
-  hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null
+# Reuse an existing window instead of starting a second copy on the same QC.
+window=$(hyprctl clients -j 2>/dev/null | jq -c --arg c "$WINDOW_CLASS" '[.[] | select(.class == $c)][0] // empty')
+if [[ -n $window ]]; then
+  address=$(jq -r '.address' <<<"$window")
+  window_ws=$(jq -r '.workspace.name' <<<"$window")
+  active_ws=$(hyprctl activeworkspace -j | jq -r '.name')
+  if [[ $mode == "toggle" ]]; then
+    [[ $window_ws == "$active_ws" ]] && mode="hide" || mode="show"
+  fi
+  if [[ $mode == "hide" ]]; then
+    hyprctl dispatch "hl.dsp.window.move({ window = \"address:$address\", workspace = \"$HIDDEN_WORKSPACE\", follow = false })" >/dev/null
+  else
+    if [[ $window_ws != "$active_ws" ]]; then
+      hyprctl dispatch "hl.dsp.window.move({ window = \"address:$address\", workspace = \"$active_ws\", follow = false })" >/dev/null
+    fi
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null
+  fi
   exit 0
 fi
+[[ $mode == "hide" ]] && exit 0
 if app_running; then
   notify "Cortex Control is already starting or closing. Try again in a few seconds."
   exit 1

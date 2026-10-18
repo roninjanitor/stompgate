@@ -17,6 +17,7 @@ QC_PROTON_HIDRAW="0x152A/0x880A,0x152A/0x892F"
 
 GAMEID="umu-cortexcontrol"
 WINDOW_CLASS="steam_app_cortexcontrol"
+HIDDEN_WORKSPACE="special:cortex-control"
 CLOUD_CHECK_URL="https://cloud.neuraldsp.com/"
 
 DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/cortex-control-omarchy"
@@ -28,6 +29,8 @@ APP="$APP_DIR/Cortex Control.exe"
 HYPR_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 HYPR_RULE_FILE="$HYPR_DIR/cortex-control.lua"
 HYPR_REQUIRE_LINE='require("default.hypr.require_optional").module("hypr.cortex-control")'
+PLUGIN_ID="cortex-control-omarchy.quad-cortex"
+PLUGIN_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/$PLUGIN_ID"
 ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
 
 # Static files: the checkout when run from it, otherwise the installed package.

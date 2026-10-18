@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "id": "cortex-control-omarchy.quad-cortex",
+  "name": "Quad Cortex",
+  "version": "0.1.0",
+  "author": "Nick Lozano",
+  "license": "MIT",
+  "description": "Neural DSP Quad Cortex in the Omarchy bar while Cortex Control runs: show or hide the editor, switch scenes, toggle the tuner and set the QC's audio.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Quad Cortex",
+    "description": "Shows whether the Quad Cortex is connected, opens Cortex Control and runs cortex-control-doctor.",
+    "category": "Audio",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "pollIntervalSec": 5,
+      "showWhen": "running"
+    },
+    "schema": [
+      {
+        "key": "showWhen",
+        "type": "enum",
+        "label": "Show icon",
+        "options": [
+          "running",
+          "connected",
+          "always"
+        ],
+        "defaultValue": "running",
+        "description": "running: only while Cortex Control is open (default). connected: also while the Quad Cortex is plugged in and on. always: never hide."
+      },
+      {
+        "key": "pollIntervalSec",
+        "type": "integer",
+        "label": "Status check interval (seconds)",
+        "min": 2,
+        "max": 60,
+        "step": 1,
+        "defaultValue": 5
+      }
+    ]
+  }
+}

@@ -12,15 +12,44 @@ else
   source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
 fi
 
+usage() {
+  cat <<'EOF'
+Usage: cortex-control-doctor [--json | --status]
+
+  --json    Full report as JSON.
+  --status  Quick device and app status as JSON, for the Omarchy bar widget.
+            Only reads /sys and the process list.
+EOF
+}
+
+# Cheap enough to poll every few seconds.
+status() {
+  local node="" vidpid="" name="" accessible=false installed=false running=false window="none"
+  read -r node vidpid name <<<"$(qc_hidraw_nodes | head -1)"
+  [[ -n $node && -r $node && -w $node ]] && accessible=true
+  [[ -f $APP ]] && installed=true
+  app_running && running=true
+  if $running && command -v hyprctl >/dev/null; then
+    # "visible" on the current workspace, "hidden" in the special workspace, else "elsewhere".
+    window=$(hyprctl clients -j 2>/dev/null | jq -r --arg c "$WINDOW_CLASS" --arg h "$HIDDEN_WORKSPACE" \
+      --arg a "$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.name')" \
+      '[.[] | select(.class == $c)][0] | if . == null then "none" elif .workspace.name == $h then "hidden"
+       elif .workspace.name == $a then "visible" else "elsewhere" end')
+  fi
+  jq -n -c --arg node "$node" --arg model "$name" --arg usbId "$vidpid" \
+    --argjson accessible "$accessible" --argjson installed "$installed" --argjson running "$running" \
+    --arg window "$window" \
+    '{connected: ($node != ""), model: $model, usbId: $usbId, node: $node, accessible: $accessible,
+      appInstalled: $installed, appRunning: $running, appWindow: $window}'
+}
+
 json=0
 case "${1:-}" in
   --json) json=1 ;;
-  -h | --help)
-    echo "Usage: cortex-control-doctor [--json]"
-    exit 0
-    ;;
+  --status) status; exit 0 ;;
+  -h | --help) usage; exit 0 ;;
   "") ;;
-  *) echo "Usage: cortex-control-doctor [--json]" >&2; exit 2 ;;
+  *) usage >&2; exit 2 ;;
 esac
 
 results=()
@@ -128,6 +157,24 @@ else
   done <<<"$nodes"
 fi
 
+if [[ -n $nodes ]]; then
+  qc_tool="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/cortex-control-qc"
+  if [[ -x $qc_tool ]]; then
+    midi=$("$qc_tool" midi-status 2>/dev/null)
+    if [[ $(jq -r '.present' <<<"$midi" 2>/dev/null) == true ]]; then
+      add OK "QC MIDI" "port $(jq -r '.port' <<<"$midi"), sending on channel $(jq -r '.channel' <<<"$midi")"
+    else
+      add WARN "QC MIDI" "no MIDI port; turn on MIDI OVER USB on the QC (Settings > Device > MIDI)"
+    fi
+    audio=$("$qc_tool" audio-status 2>/dev/null)
+    if [[ $(jq -r '.present' <<<"$audio" 2>/dev/null) == true ]]; then
+      add OK "QC audio" "profile $(jq -r '.profile' <<<"$audio")"
+    else
+      add WARN "QC audio" "not visible to PipeWire"
+    fi
+  fi
+fi
+
 # --- Desktop integration ----------------------------------------------------
 if app_running; then
   add OK "App session" "running"
@@ -141,6 +188,14 @@ elif grep -q "$WINDOW_CLASS" "$HYPR_DIR/hyprland.lua" 2>/dev/null; then
   add OK "Hyprland rule" "your own rule in hyprland.lua"
 else
   add WARN "Hyprland rule" "missing; the window may tile and get cropped (run cortex-control-setup)"
+fi
+
+if [[ ! -d $PLUGIN_DIR ]]; then
+  add OK "Bar widget" "not installed (optional)"
+elif [[ -d $SHARE_DIR/plugin ]] && ! diff -rq "$SHARE_DIR/plugin" "$PLUGIN_DIR" >/dev/null 2>&1; then
+  add WARN "Bar widget" "older than the installed package; run cortex-control-setup to update it"
+else
+  add OK "Bar widget" "$PLUGIN_ID"
 fi
 
 if curl --fail --silent --head --connect-timeout 2 --max-time 5 "$CLOUD_CHECK_URL" >/dev/null 2>&1; then
