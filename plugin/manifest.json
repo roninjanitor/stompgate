@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "cortex-control-omarchy.quad-cortex",
-  "name": "Quad Cortex",
+  "id": "stompgate.widget",
+  "name": "Stompgate",
   "version": "0.2.0",
   "author": "Nick Lozano",
   "license": "MIT",
@@ -13,8 +13,8 @@
     "barWidget": "Panel.qml"
   },
   "barWidget": {
-    "displayName": "Quad Cortex",
-    "description": "Unofficial. Needs the cortex-control-omarchy package. Shows or hides Cortex Control and switches the Quad Cortex's scenes, modes, tuner and audio.",
+    "displayName": "Stompgate",
+    "description": "Unofficial. Needs the stompgate package. Shows or hides Cortex Control and switches the Quad Cortex's scenes, modes, tuner and audio.",
     "category": "Audio",
     "allowMultiple": false,
     "defaultSection": "right",

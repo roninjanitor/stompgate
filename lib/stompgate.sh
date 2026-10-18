@@ -1,4 +1,4 @@
-# Shared settings and helpers for the cortex-control-* commands. Sourced, not run.
+# Shared settings and helpers for the stompgate commands. Sourced, not run.
 
 # Pinned inputs. Change these together and retest before bumping.
 CC_VERSION="4.1.0"
@@ -22,31 +22,31 @@ WINDOW_CLASS="steam_app_cortexcontrol"
 WINDOW_JQ='select(.class == "steam_app_cortexcontrol" or (.class == "gamescope" and (.title | startswith("Cortex Control"))))'
 APP_MIN_WIDTH=800  # below about 800x570 the app crops its own UI
 APP_RATIO="1.404"
-HIDDEN_WORKSPACE="special:cortex-control"
+HIDDEN_WORKSPACE="special:stompgate"
 CLOUD_CHECK_URL="https://cloud.neuraldsp.com/"
 
-DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/cortex-control-omarchy"
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/cortex-control-omarchy"
-PREFIX="${CORTEX_CONTROL_PREFIX:-$DATA_DIR/prefix}"
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/stompgate"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/stompgate"
+PREFIX="${STOMPGATE_PREFIX:-$DATA_DIR/prefix}"
 PROTON_DIR="$DATA_DIR/proton/$PROTON_VERSION-x86_64"
 APP_DIR="$PREFIX/drive_c/Program Files/Neural DSP/Cortex Control"
 APP="$APP_DIR/Cortex Control.exe"
 HYPR_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
-HYPR_RULE_FILE="$HYPR_DIR/cortex-control.lua"
-HYPR_REQUIRE_LINE='require("default.hypr.require_optional").module("hypr.cortex-control")'
-PLUGIN_ID="cortex-control-omarchy.quad-cortex"
+HYPR_RULE_FILE="$HYPR_DIR/stompgate.lua"
+HYPR_REQUIRE_LINE='require("default.hypr.require_optional").module("hypr.stompgate")'
+PLUGIN_ID="stompgate.widget"
 PLUGIN_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/$PLUGIN_ID"
 MENU_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/extensions/omarchy-menu.jsonc"
-MENU_BEGIN="// >>> cortex-control-omarchy"
-MENU_END="// <<< cortex-control-omarchy"
+MENU_BEGIN="// >>> stompgate"
+MENU_END="// <<< stompgate"
 ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
 
 # How the window is shown. gamescope: inside gamescope, which letterboxes the
 # app into any tile size. window: a normal window, pseudotiled by the Hyprland
-# rule. Set with cortex-control-setup --display, or CORTEX_CONTROL_DISPLAY.
-CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/cortex-control-omarchy/config"
+# rule. Set with stompgate-setup --display, or STOMPGATE_DISPLAY.
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/stompgate/config"
 display_mode() {
-  local mode="${CORTEX_CONTROL_DISPLAY:-}"
+  local mode="${STOMPGATE_DISPLAY:-}"
   [[ -n $mode ]] || mode=$(sed -n 's/^display=//p' "$CONFIG_FILE" 2>/dev/null | tail -1)
   if [[ -z $mode ]]; then
     command -v gamescope >/dev/null && mode="gamescope" || mode="window"
@@ -61,7 +61,7 @@ if [[ -z ${SHARE_DIR:-} ]]; then
   if [[ -f $_cc_lib_dir/../PKGBUILD ]]; then
     SHARE_DIR="$(realpath "$_cc_lib_dir/..")"
   else
-    SHARE_DIR="/usr/share/cortex-control-omarchy"
+    SHARE_DIR="/usr/share/stompgate"
   fi
   unset _cc_lib_dir
 fi
@@ -78,11 +78,38 @@ plugin_current() {
   done
 }
 
-# Remove our marked block from Omarchy's menu extensions file, if present.
+# Remove a marked block (ours by default) from Omarchy's menu extensions file.
 remove_menu_block() {
-  [[ -f $MENU_FILE ]] && grep -qF "$MENU_BEGIN" "$MENU_FILE" || return 0
-  awk -v b="$MENU_BEGIN" -v e="$MENU_END" 'index($0, b) { skip = 1 } !skip { print } index($0, e) { skip = 0 }' \
+  local begin="${1:-$MENU_BEGIN}" end="${2:-$MENU_END}"
+  [[ -f $MENU_FILE ]] && grep -qF "$begin" "$MENU_FILE" || return 0
+  awk -v b="$begin" -v e="$end" 'index($0, b) { skip = 1 } !skip { print } index($0, e) { skip = 0 }' \
     "$MENU_FILE" >"$MENU_FILE.tmp" && mv "$MENU_FILE.tmp" "$MENU_FILE"
+}
+
+# Development builds were called cortex-control-omarchy. stompgate-setup moves
+# such an install over; the doctor warns while any of it is left.
+OLD_NAME="cortex-control-omarchy"
+OLD_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/$OLD_NAME"
+OLD_STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/$OLD_NAME"
+OLD_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/$OLD_NAME"
+OLD_HYPR_RULE_FILE="$HYPR_DIR/cortex-control.lua"
+OLD_HYPR_REQUIRE_LINE='require("default.hypr.require_optional").module("hypr.cortex-control")'
+OLD_PLUGIN_ID="$OLD_NAME.quad-cortex"
+OLD_PLUGIN_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/$OLD_PLUGIN_ID"
+OLD_MENU_BEGIN="// >>> $OLD_NAME"
+OLD_MENU_END="// <<< $OLD_NAME"
+
+# Print what's left of an old-name install, one item per line.
+old_install_leftovers() {
+  [[ -d $OLD_DATA_DIR ]] && echo "$OLD_DATA_DIR"
+  [[ -d $OLD_STATE_DIR ]] && echo "$OLD_STATE_DIR"
+  [[ -d $OLD_CONFIG_DIR ]] && echo "$OLD_CONFIG_DIR"
+  [[ -f $OLD_HYPR_RULE_FILE ]] && echo "$OLD_HYPR_RULE_FILE"
+  grep -qF "$OLD_HYPR_REQUIRE_LINE" "$HYPR_DIR/hyprland.lua" 2>/dev/null && echo "$HYPR_DIR/hyprland.lua (old require line)"
+  [[ -d $OLD_PLUGIN_DIR ]] && echo "$OLD_PLUGIN_DIR"
+  grep -qF "$OLD_MENU_BEGIN" "$MENU_FILE" 2>/dev/null && echo "$MENU_FILE (old menu entries)"
+  compgen -G "$ICON_DIR/*/apps/cortex-control.png" >/dev/null && echo "$ICON_DIR/*/apps/cortex-control.png"
+  return 0
 }
 
 info() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }

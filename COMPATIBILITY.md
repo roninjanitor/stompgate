@@ -35,13 +35,13 @@ GPU and driver:    (e.g. AMD RX 7800 XT, mesa 25.x)
 Screen:            (resolution, and laptop or external)
 Omarchy version:   (omarchy version)
 Display mode:      gamescope / window
-Package version:   (pacman -Q cortex-control-omarchy)
+Package version:   (pacman -Q stompgate)
 
 What works:        (editor draws / QC connects / editing / scenes / tuner /
                     modes / footswitches / tiling / audio in a DAW / ...)
 What doesn't:
 
-cortex-control-doctor output:
+stompgate-doctor output:
 (paste here)
 ```
 

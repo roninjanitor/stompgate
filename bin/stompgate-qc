@@ -7,15 +7,15 @@
 set -euo pipefail
 
 _here="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-if [[ -f $_here/../lib/cortex-control-omarchy.sh ]]; then
-  source "$_here/../lib/cortex-control-omarchy.sh"
+if [[ -f $_here/../lib/stompgate.sh ]]; then
+  source "$_here/../lib/stompgate.sh"
 else
-  source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
+  source /usr/share/stompgate/lib/stompgate.sh
 fi
 
 usage() {
   cat <<'EOF'
-Usage: cortex-control-qc [--osd] <command> [args]
+Usage: stompgate-qc [--osd] <command> [args]
 
   --osd   Also show the result in Omarchy's on-screen display (for keybindings)
 
@@ -40,8 +40,8 @@ MIDI (needs Settings > Device > MIDI > MIDI OVER USB on the QC):
   preset <bank><slot> [setlist]  Load a preset, e.g. "preset 38C" (CC#0, CC#32, PC).
                                  setlist: 0 = Factory, 1 = My Presets (default), 2-12 = folders
 
-The MIDI channel is $CORTEX_CONTROL_MIDI_CHANNEL (1-16, default 1). Set the QC's
-MIDI CHANNEL to match, or to OMNI. CORTEX_CONTROL_MIDI_DRY_RUN=1 prints the
+The MIDI channel is $STOMPGATE_MIDI_CHANNEL (1-16, default 1). Set the QC's
+MIDI CHANNEL to match, or to OMNI. STOMPGATE_MIDI_DRY_RUN=1 prints the
 messages instead of sending them.
 EOF
 }
@@ -98,7 +98,7 @@ pro_audio() {
         | max_by(.value.priority).key // empty' <<<"$card")
       [[ -n $profile ]] || die "no other profile available."
       ;;
-    *) die "usage: cortex-control-qc pro-audio on|off" ;;
+    *) die "usage: stompgate-qc pro-audio on|off" ;;
   esac
   pactl set-card-profile "$name" "$profile"
 }
@@ -200,7 +200,7 @@ midi_status() {
   scene=$(state_get scene)
   mode=$(state_get mode)
   tuner=$(state_get tunerOpen)
-  jq -n -c --arg port "$port" --arg channel "${CORTEX_CONTROL_MIDI_CHANNEL:-1}" \
+  jq -n -c --arg port "$port" --arg channel "${STOMPGATE_MIDI_CHANNEL:-1}" \
     --arg scene "${scene:--1}" --arg tuner "${tuner:-false}" --arg mode "${mode:--1}" \
     '{present: ($port != ""), port: $port, channel: ($channel | tonumber),
       scene: ($scene | tonumber), mode: ($mode | tonumber), tunerOpen: ($tuner == "true")}'
@@ -208,7 +208,7 @@ midi_status() {
 
 # Send one or more MIDI messages, given as space-separated hex bytes.
 midi_send() {
-  if [[ ${CORTEX_CONTROL_MIDI_DRY_RUN:-} == 1 ]]; then
+  if [[ ${STOMPGATE_MIDI_DRY_RUN:-} == 1 ]]; then
     printf '%s\n' "$@"
     return
   fi
@@ -227,8 +227,8 @@ midi_send() {
 }
 
 channel_nibble() {
-  local ch="${CORTEX_CONTROL_MIDI_CHANNEL:-1}"
-  [[ $ch =~ ^[0-9]+$ ]] && (( ch >= 1 && ch <= 16 )) || die "CORTEX_CONTROL_MIDI_CHANNEL must be 1-16"
+  local ch="${STOMPGATE_MIDI_CHANNEL:-1}"
+  [[ $ch =~ ^[0-9]+$ ]] && (( ch >= 1 && ch <= 16 )) || die "STOMPGATE_MIDI_CHANNEL must be 1-16"
   printf '%X' $((ch - 1))
 }
 

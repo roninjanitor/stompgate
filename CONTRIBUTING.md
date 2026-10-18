@@ -6,11 +6,11 @@ maintainers for support with it.
 
 ## Reporting problems
 
-1. Run `cortex-control-doctor` and include its output.
+1. Run `stompgate-doctor` and include its output.
 2. If Cortex Control itself misbehaves, also attach
-   `~/.local/state/cortex-control-omarchy/last-run.log`. For more detail, run
-   `WINEDEBUG=err+all cortex-control` from a terminal and attach that.
-3. For MIDI problems, include `~/.local/state/cortex-control-omarchy/qc.log`.
+   `~/.local/state/stompgate/last-run.log`. For more detail, run
+   `WINEDEBUG=err+all stompgate` from a terminal and attach that.
+3. For MIDI problems, include `~/.local/state/stompgate/qc.log`.
 4. **Remove anything personal** before posting: usernames in paths, account
    names, serial numbers.
 
@@ -31,7 +31,7 @@ Compatibility reports, including "it just works" ones, are just as useful. See
   that run as root. Per-user setup must work without sudo.
 - **Respect the user's files:** back up before editing a config file, edit only
   inside our marked block or our own file, and keep user edits (see how setup
-  handles `cortex-control.lua.new`).
+  handles `stompgate.lua.new`).
 - **Match Omarchy's conventions:** `o.bind` / `o.window` in Hyprland Lua,
   `omarchy-*` helpers, the shell's own UI components in the widget.
 
@@ -41,9 +41,9 @@ Everything runs from a checkout. The commands find `lib/` and the widget
 relative to the repo, so you can test without installing:
 
 ```sh
-./bin/cortex-control-doctor
-./bin/cortex-control-setup --silent
-CORTEX_CONTROL_MIDI_DRY_RUN=1 ./bin/cortex-control-qc scene next   # prints MIDI, sends nothing
+./bin/stompgate-doctor
+./bin/stompgate-setup --silent
+STOMPGATE_MIDI_DRY_RUN=1 ./bin/stompgate-qc scene next   # prints MIDI, sends nothing
 omarchy plugin validate plugin
 bash -n bin/* lib/*.sh
 ```

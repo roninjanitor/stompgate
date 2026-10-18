@@ -7,15 +7,15 @@
 set -euo pipefail
 
 _here="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-if [[ -f $_here/../lib/cortex-control-omarchy.sh ]]; then
-  source "$_here/../lib/cortex-control-omarchy.sh"
+if [[ -f $_here/../lib/stompgate.sh ]]; then
+  source "$_here/../lib/stompgate.sh"
 else
-  source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
+  source /usr/share/stompgate/lib/stompgate.sh
 fi
 
 usage() {
   cat <<EOF
-Usage: cortex-control-setup [--installer PATH] [--silent] [--no-hypr]
+Usage: stompgate-setup [--installer PATH] [--silent] [--no-hypr]
 
   --installer PATH  Use this copy of "$CC_INSTALLER_NAME". By default it is looked
                     for in your Downloads folder, then downloaded from Neural DSP.
@@ -23,8 +23,8 @@ Usage: cortex-control-setup [--installer PATH] [--silent] [--no-hypr]
                     accepts their license agreement for you, so only use it if
                     you have already read and accepted it.
   --no-hypr         Don't add the Hyprland window rule.
-  --no-plugin       Don't add the Quad Cortex widget to the Omarchy bar.
-  --no-menu         Don't add Quad Cortex entries to the Omarchy menu.
+  --no-plugin       Don't add the Stompgate widget to the Omarchy bar.
+  --no-menu         Don't add Stompgate entries to the Omarchy menu.
   --display MODE    gamescope: letterbox the app into any tile size (default when
                     gamescope is installed). window: a normal window, pseudotiled.
 EOF
@@ -56,18 +56,77 @@ done
 
 refuse_root
 for cmd in umu-run curl sha256sum sha512sum tar jq; do
-  command -v "$cmd" >/dev/null || die "$cmd is missing. Install the cortex-control-omarchy package."
+  command -v "$cmd" >/dev/null || die "$cmd is missing. Install the stompgate package."
 done
 
 cat <<'EOF'
 
-  Cortex Control for Omarchy (unofficial, not affiliated with Neural DSP)
+  Stompgate: Cortex Control for Omarchy (unofficial; not affiliated with Neural DSP or Omarchy)
 
   !! Never update firmware through Cortex Control under Proton. A failed update
   !! can leave your Quad Cortex unusable. Update over Wi-Fi on the device itself.
   !! Back up your Quad Cortex before editing presets.
 
 EOF
+
+# Move an install made by the development builds (cortex-control-omarchy) to
+# the Stompgate names, so nothing needs reinstalling.
+migrate_old_install() {
+  [[ -n $(old_install_leftovers) ]] || return 0
+  info "Moving your cortex-control-omarchy install to Stompgate"
+
+  if [[ -d $OLD_DATA_DIR ]]; then
+    if [[ -e $DATA_DIR ]]; then
+      warn "Both $OLD_DATA_DIR and $DATA_DIR exist; leaving the old one alone. Delete it once you're sure you don't need it."
+    else
+      app_running && die "Cortex Control is running. Close it first, then run stompgate-setup again."
+      mv "$OLD_DATA_DIR" "$DATA_DIR"
+      # Proton links Wine's built-in programs into the prefix by absolute path,
+      # and records its own location in config_info; point both at the new place.
+      local link target relinked=0
+      while IFS= read -r -d '' link; do
+        target=$(readlink "$link")
+        ln -sfn "$DATA_DIR${target#"$OLD_DATA_DIR"}" "$link"
+        relinked=$((relinked + 1))
+      done < <(find "$DATA_DIR" -type l -lname "$OLD_DATA_DIR/*" -print0)
+      [[ -f $PREFIX/config_info ]] && sed -i "s|$OLD_DATA_DIR|$DATA_DIR|g" "$PREFIX/config_info"
+      [[ -z $(find "$DATA_DIR" -type l -lname "$OLD_DATA_DIR/*" -print -quit) ]] ||
+        die "some prefix links still point at $OLD_DATA_DIR; please report this."
+      info "Moved the prefix and Proton to $DATA_DIR ($relinked links updated)"
+    fi
+  fi
+
+  [[ -d $OLD_STATE_DIR && ! -e $STATE_DIR ]] && mv "$OLD_STATE_DIR" "$STATE_DIR"
+  [[ -d $OLD_CONFIG_DIR && ! -e $(dirname "$CONFIG_FILE") ]] && mv "$OLD_CONFIG_DIR" "$(dirname "$CONFIG_FILE")"
+
+  local conf="$HYPR_DIR/hyprland.lua"
+  if [[ -f $OLD_HYPR_RULE_FILE ]]; then
+    local record="$STATE_DIR/hypr-rule.sha256"
+    if [[ -f $record ]] && [[ $(sha256sum "$OLD_HYPR_RULE_FILE" | cut -d' ' -f1) != "$(cat "$record")" ]]; then
+      cp "$OLD_HYPR_RULE_FILE" "$OLD_HYPR_RULE_FILE.bak.$(date +%s)"
+      warn "You had edited $OLD_HYPR_RULE_FILE; it's backed up beside it. Re-apply your key changes in $HYPR_RULE_FILE."
+    fi
+    rm -f "$OLD_HYPR_RULE_FILE" "$OLD_HYPR_RULE_FILE.new" "$record"
+  fi
+  if [[ -f $conf ]] && grep -qF "$OLD_HYPR_REQUIRE_LINE" "$conf"; then
+    cp "$conf" "$conf.bak.$(date +%s)"
+    grep -vF -e "$OLD_HYPR_REQUIRE_LINE" -e "-- Cortex Control window rule (cortex-control-setup" "$conf" >"$conf.tmp"
+    mv "$conf.tmp" "$conf"
+  fi
+
+  if [[ -d $OLD_PLUGIN_DIR ]]; then
+    omarchy plugin disable "$OLD_PLUGIN_ID" >/dev/null 2>&1 || true
+    rm -rf -- "$OLD_PLUGIN_DIR"
+    omarchy-shell -q shell rescanPlugins
+  fi
+
+  if grep -qF "$OLD_MENU_BEGIN" "$MENU_FILE" 2>/dev/null; then
+    cp "$MENU_FILE" "$MENU_FILE.bak.$(date +%s)"
+    remove_menu_block "$OLD_MENU_BEGIN" "$OLD_MENU_END"
+  fi
+
+  rm -f "$ICON_DIR"/*/apps/cortex-control.png
+}
 
 get_proton() {
   if [[ -x $PROTON_DIR/proton ]]; then
@@ -94,7 +153,7 @@ find_installer() {
     [[ -f $installer ]] || die "installer not found: $installer"
     installer="$(realpath "$installer")"
   else
-    local downloads cache="${XDG_CACHE_HOME:-$HOME/.cache}/cortex-control-omarchy"
+    local downloads cache="${XDG_CACHE_HOME:-$HOME/.cache}/stompgate"
     downloads="$(xdg-user-dir DOWNLOAD 2>/dev/null || echo "$HOME/Downloads")"
     if [[ -f $downloads/$CC_INSTALLER_NAME ]]; then
       installer="$downloads/$CC_INSTALLER_NAME"
@@ -174,7 +233,7 @@ clean_wine_menu() {
 }
 
 install_icon() {
-  if compgen -G "$ICON_DIR/*/apps/cortex-control.png" >/dev/null; then
+  if compgen -G "$ICON_DIR/*/apps/stompgate-cortex-control.png" >/dev/null; then
     return
   fi
   if ! command -v wrestool >/dev/null || ! command -v icotool >/dev/null; then
@@ -193,7 +252,7 @@ install_icon() {
     # icotool names files like name_1_256x256x32.png
     size=$(grep -oE '_[0-9]+x[0-9]+x[0-9]+\.png$' <<<"$png" | cut -d_ -f2 | cut -dx -f1)
     [[ -n $size ]] || continue
-    install -Dm644 "$png" "$ICON_DIR/${size}x${size}/apps/cortex-control.png"
+    install -Dm644 "$png" "$ICON_DIR/${size}x${size}/apps/stompgate-cortex-control.png"
   done
   rm -rf "$tmp"
   gtk-update-icon-cache -f -t "$ICON_DIR" >/dev/null 2>&1 || true
@@ -211,7 +270,7 @@ install_hypr_rule() {
     warn "$conf already has its own $WINDOW_CLASS rule; leaving it alone."
     return
   fi
-  local src="$SHARE_DIR/hypr/cortex-control.lua" record="$STATE_DIR/hypr-rule.sha256"
+  local src="$SHARE_DIR/hypr/stompgate.lua" record="$STATE_DIR/hypr-rule.sha256"
   if cmp -s "$src" "$HYPR_RULE_FILE" && grep -qF "$HYPR_REQUIRE_LINE" "$conf"; then
     info "The Hyprland window rule and keys are already in place"
     return
@@ -231,7 +290,7 @@ install_hypr_rule() {
   sha256sum "$HYPR_RULE_FILE" | cut -d' ' -f1 >"$record"
   if ! grep -qF "$HYPR_REQUIRE_LINE" "$conf"; then
     cp "$conf" "$conf.bak.$(date +%s)"
-    printf '\n-- Cortex Control window rule (cortex-control-setup; removed by cortex-control-uninstall)\n%s\n' \
+    printf '\n-- Stompgate window rule and keys (stompgate-setup; removed by stompgate-uninstall)\n%s\n' \
       "$HYPR_REQUIRE_LINE" >>"$conf"
   fi
   if command -v hyprctl >/dev/null && hyprctl version >/dev/null 2>&1; then
@@ -248,13 +307,13 @@ install_plugin() {
   command -v omarchy >/dev/null || return 0
   local src="$SHARE_DIR/plugin"
   if [[ -d $PLUGIN_DIR ]] && plugin_current "$src"; then
-    info "The Quad Cortex bar widget is up to date"
+    info "The Stompgate bar widget is up to date"
     return
   fi
   local fresh=1
   [[ -d $PLUGIN_DIR ]] && fresh=0
   if (( fresh )) && [[ -t 0 ]] && command -v gum >/dev/null; then
-    gum confirm "Add a Quad Cortex widget to the Omarchy bar?" || return 0
+    gum confirm "Add the Stompgate widget to the Omarchy bar?" || return 0
   fi
   # Omarchy rejects symlinked plugins, so install a copy.
   mkdir -p "$PLUGIN_DIR"
@@ -263,9 +322,9 @@ install_plugin() {
   omarchy-shell -q shell rescanPlugins
   if (( fresh )); then
     omarchy plugin enable "$PLUGIN_ID" >/dev/null 2>&1 || warn "Could not enable the bar widget; run: omarchy plugin enable $PLUGIN_ID"
-    info "Added the Quad Cortex widget to the Omarchy bar"
+    info "Added the Stompgate widget to the Omarchy bar"
   else
-    info "Updated the Quad Cortex bar widget. Run 'omarchy restart shell' to load the new version."
+    info "Updated the Stompgate bar widget. Run 'omarchy restart shell' to load the new version."
   fi
 }
 
@@ -296,7 +355,7 @@ install_menu() {
         print lines[i]
       }
     }' "$MENU_FILE" >"$MENU_FILE.tmp" && mv "$MENU_FILE.tmp" "$MENU_FILE"
-  info "Added Quad Cortex to the Omarchy menu (Trigger › Quad Cortex, Learn › Quad Cortex)"
+  info "Added Stompgate to the Omarchy menu (Trigger › Stompgate, Learn › Stompgate)"
 }
 
 report_display() {
@@ -304,7 +363,7 @@ report_display() {
     gamescope) info "Display: gamescope (fits any tile size without cropping)" ;;
     *)
       if command -v gamescope >/dev/null; then
-        info "Display: normal window, pseudotiled. For any tile size: cortex-control-setup --display gamescope"
+        info "Display: normal window, pseudotiled. For any tile size: stompgate-setup --display gamescope"
       else
         info "Display: normal window, pseudotiled. Tiles under ~800 px wide crop it; install gamescope to fix that."
       fi
@@ -323,11 +382,12 @@ check_qc_access() {
     if [[ -r $node && -w $node ]]; then
       info "$name is connected and accessible ($node)"
     else
-      warn "$name ($node) is not accessible. Is the cortex-control-omarchy package installed? Try replugging it."
+      warn "$name ($node) is not accessible. Is the stompgate package installed? Try replugging it."
     fi
   done <<<"$nodes"
 }
 
+migrate_old_install
 get_proton
 create_prefix
 install_app
@@ -342,9 +402,9 @@ check_qc_access
 cat <<'EOF'
 
 Done. Start "Cortex Control" from the Omarchy app launcher (Super + Space),
-press Super + Shift + Q, or run: cortex-control
-Keyboard shortcuts: Super + K and search "Quad", or run: cortex-control --keys
-Check the setup any time with: cortex-control-doctor
+press Super + Shift + Q, or run: stompgate
+Keyboard shortcuts: Super + K and search "Stompgate", or run: stompgate --keys
+Check the setup any time with: stompgate-doctor
 
 !! Reminder: never update firmware from Cortex Control. Use Wi-Fi updates on the QC.
 EOF

@@ -2,9 +2,9 @@
 Type=Application
 Name=Cortex Control
 GenericName=Quad Cortex Editor
-Comment=Edit presets and settings on the Neural DSP Quad Cortex
-Exec=cortex-control
-Icon=cortex-control
+Comment=Edit presets on the Neural DSP Quad Cortex, via Stompgate (unofficial)
+Exec=stompgate
+Icon=stompgate-cortex-control
 Terminal=false
 StartupNotify=true
 StartupWMClass=steam_app_cortexcontrol

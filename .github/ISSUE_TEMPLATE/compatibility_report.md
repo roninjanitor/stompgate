@@ -12,7 +12,7 @@ GPU and driver:
 Screen:            (resolution, and laptop or external)
 Omarchy version:   (omarchy version)
 Display mode:      gamescope / window
-Package version:   (pacman -Q cortex-control-omarchy)
+Package version:   (pacman -Q stompgate)
 ```
 
 **What works:**
@@ -21,7 +21,7 @@ Package version:   (pacman -Q cortex-control-omarchy)
 
 **What doesn't:**
 
-**`cortex-control-doctor` output**
+**`stompgate-doctor` output**
 ```
 (paste here; remove anything personal)
 ```

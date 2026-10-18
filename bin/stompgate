@@ -6,10 +6,10 @@
 set -euo pipefail
 
 _here="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-if [[ -f $_here/../lib/cortex-control-omarchy.sh ]]; then
-  source "$_here/../lib/cortex-control-omarchy.sh"
+if [[ -f $_here/../lib/stompgate.sh ]]; then
+  source "$_here/../lib/stompgate.sh"
 else
-  source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
+  source /usr/share/stompgate/lib/stompgate.sh
 fi
 
 # Our shortcuts as Hyprland currently has them, so edits to the keys show up
@@ -18,7 +18,7 @@ current_keys() {
   omarchy-menu-keybindings --print 2>/dev/null |
     awk -F ' *→ *' '
       BEGIN { name["SUPER"] = "Super"; name["ALT"] = "Alt"; name["CTRL"] = "Ctrl"; name["SHIFT"] = "Shift" }
-      $2 ~ /^(Quad Cortex|Cortex Control): / {
+      $2 ~ /^Stompgate: / {
         # "SUPER ALT + B" -> "Super + Alt + B"
         n = split($1, parts, /[ +]+/); keys = ""
         for (i = 1; i <= n; i++) if (parts[i] != "") keys = keys (keys == "" ? "" : " + ") (parts[i] in name ? name[parts[i]] : parts[i])
@@ -36,12 +36,12 @@ show_keys() {
     --menu)
       local change="Change these keys…" choice
       choice=$( { awk -F '\t' '{ printf "%-28s %s\n", $1, $2 }' <<<"$rows"; echo "$change"; } |
-        omarchy-menu-select "Quad Cortex keys" -- --width 720 --height 460) || exit 0
+        omarchy-menu-select "Stompgate keys" -- --width 720 --height 460) || exit 0
       [[ $choice == "$change" ]] && exec omarchy-launch-editor "$HYPR_RULE_FILE"
       ;;
     *)
       if [[ -z $rows ]]; then
-        echo "No Cortex Control shortcuts are bound. Run cortex-control-setup to add them."
+        echo "No Cortex Control shortcuts are bound. Run stompgate-setup to add them."
       else
         awk -F '\t' '{ printf "  %-28s %s\n", $1, $2 }' <<<"$rows"
         echo
@@ -59,7 +59,7 @@ case "${1:-}" in
   --toggle) mode="toggle"; shift ;;
   -h | --help)
     cat <<'EOF'
-Usage: cortex-control [--show | --hide | --toggle | --keys [--json | --menu]]
+Usage: stompgate [--show | --hide | --toggle | --keys [--json | --menu]]
 
 Starts Cortex Control, or shows and focuses its window if it is already open.
 
@@ -68,7 +68,7 @@ Starts Cortex Control, or shows and focuses its window if it is already open.
   --toggle  Hide the window if it's on the current workspace, otherwise show it
   --keys    List the keyboard shortcuts (--menu: Omarchy menu, --json: for scripts)
 
-Related commands: cortex-control-setup, cortex-control-doctor, cortex-control-qc, cortex-control-uninstall
+Related commands: stompgate-setup, stompgate-doctor, stompgate-qc, stompgate-uninstall
 EOF
     exit 0
     ;;
@@ -79,9 +79,9 @@ refuse_root
 if [[ ! -f $APP || ! -x $PROTON_DIR/proton ]]; then
   # From the app launcher there is no terminal, so open one for the setup.
   if [[ ! -t 0 ]] && command -v omarchy-launch-floating-terminal-with-presentation >/dev/null; then
-    exec omarchy-launch-floating-terminal-with-presentation cortex-control-setup
+    exec omarchy-launch-floating-terminal-with-presentation stompgate-setup
   fi
-  die "Cortex Control is not set up yet. Run: cortex-control-setup"
+  die "Cortex Control is not set up yet. Run: stompgate-setup"
 fi
 
 # Reuse an existing window instead of starting a second copy on the same QC.
@@ -125,7 +125,7 @@ cd "$APP_DIR"
 export WINEPREFIX="$PREFIX" PROTONPATH="$PROTON_DIR" GAMEID
 export PROTON_ENABLE_HIDRAW="$QC_PROTON_HIDRAW"
 export WINEPATH="Z:${shim_dir//\//\\}"
-export CORTEX_CONTROL_HOST_ONLINE="$online"
+export STOMPGATE_HOST_ONLINE="$online"
 export WINEDEBUG="${WINEDEBUG:--all}"
 # Wine's Wayland driver gives the window a Windows-style frame and breaks
 # resizing; keep it on XWayland.

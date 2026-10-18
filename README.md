@@ -1,7 +1,10 @@
-# Cortex Control for Omarchy
+# Stompgate
 
-Run Neural DSP's **Cortex Control**, the Windows editor for the Quad Cortex, on
-[Omarchy](https://omarchy.org). It runs through Proton, and the Quad Cortex
+**Stompgate** runs Neural DSP's **Cortex Control**, the Windows editor for the
+Quad Cortex, on [Omarchy](https://omarchy.org). *Unofficial; not affiliated
+with Neural DSP or Omarchy.*
+
+Stompgate is the name of this community project, not of a Neural DSP product. It runs through Proton, and the Quad Cortex
 connects over USB, so you don't need a Windows VM. It also integrates with
 Omarchy:
 
@@ -11,8 +14,8 @@ Omarchy:
 - **Bar widget:** shows the QC's status and gives quick controls.
 - **Keyboard shortcuts:** show or hide the editor, toggle the tuner, and switch
   scenes and modes, with feedback on Omarchy's on-screen display.
-- **Omarchy menu:** Quad Cortex entries under Trigger and Learn.
-- **Doctor:** `cortex-control-doctor` checks the whole setup.
+- **Omarchy menu:** Stompgate entries under Trigger and Learn.
+- **Doctor:** `stompgate-doctor` checks the whole setup.
 
 > [!CAUTION]
 > **Never update the Quad Cortex's firmware through Cortex Control on Linux.**
@@ -61,15 +64,15 @@ Omarchy:
 ## Install
 
 ```sh
-git clone <this repo> ~/projects/cortex-control-omarchy
-cd ~/projects/cortex-control-omarchy
+git clone <this repo> ~/projects/stompgate
+cd ~/projects/stompgate
 makepkg -si                 # builds and installs the package (asks for sudo)
-cortex-control-setup        # per-user setup, run as yourself (no sudo)
+stompgate-setup        # per-user setup, run as yourself (no sudo)
 omarchy restart shell       # loads the bar widget
 ```
 
 **The package** installs the system parts:
-- the `cortex-control*` commands,
+- the `stompgate*` commands,
 - the menu entry,
 - a udev rule that lets you, the logged-in user, reach the QC's USB control
   interface. It matches **only** `152a:880a` (Quad Cortex) and `152a:892f`
@@ -77,10 +80,10 @@ omarchy restart shell       # loads the bar widget
 
 It depends on `umu-launcher` and doesn't install or replace the system Wine.
 
-**`cortex-control-setup`** does everything else, in your home folder. Each step
+**`stompgate-setup`** does everything else, in your home folder. Each step
 can be run again safely.
 1. Downloads **GE-Proton11-9** and checks it against a pinned SHA-512.
-2. Creates a dedicated Wine prefix in `~/.local/share/cortex-control-omarchy/`.
+2. Creates a dedicated Wine prefix in `~/.local/share/stompgate/`.
 3. Checks the installer against the known SHA-256 for 4.1.0, then installs
    Cortex Control. You choose Neural DSP's setup wizard (shows the license) or a
    silent install (only if you've already accepted the license).
@@ -89,7 +92,7 @@ can be run again safely.
    Omarchy menu entries. Skip any of these with `--no-hypr`, `--no-plugin` or
    `--no-menu`.
 6. Picks the display mode: `gamescope` if it's installed, otherwise `window`.
-   Change it later with `cortex-control-setup --display gamescope|window`.
+   Change it later with `stompgate-setup --display gamescope|window`.
 
 **On the Quad Cortex**, for the scene, tuner, mode and footswitch controls:
 1. Go to **Settings → Device → MIDI**.
@@ -102,29 +105,29 @@ Read this before you install.
 
 **Needs sudo (asked for by `makepkg -si`, through pacman):**
 - **Installs the package**, which owns these files:
-  - `/usr/bin/cortex-control*`
-  - `/usr/share/cortex-control-omarchy/`
-  - `/usr/share/applications/cortex-control.desktop`
-  - `/usr/lib/udev/rules.d/70-cortex-control-omarchy.rules`
+  - `/usr/bin/stompgate*`
+  - `/usr/share/stompgate/`
+  - `/usr/share/applications/stompgate.desktop`
+  - `/usr/lib/udev/rules.d/70-stompgate.rules`
   - the README and license under `/usr/share/doc` and `/usr/share/licenses`
 - **Installs dependencies** from the Arch repos, including `umu-launcher`.
 - **Installs the udev rule and reloads udev.** It gives the logged-in user
   access to the Quad Cortex's HID node (`152a:880a`, `152a:892f`) and **nothing
   else**.
 
-**Your home folder (`cortex-control-setup`, no sudo):**
+**Your home folder (`stompgate-setup`, no sudo):**
 
 | Path | What |
 |---|---|
-| `~/.local/share/cortex-control-omarchy/` | Pinned GE-Proton and the Wine prefix with Cortex Control |
+| `~/.local/share/stompgate/` | Pinned GE-Proton and the Wine prefix with Cortex Control |
 | `~/.local/share/umu/` | umu-launcher's Steam runtime, shared with other umu apps |
-| `~/.local/state/cortex-control-omarchy/` | Launcher log, MIDI send log, last scene/mode/tuner state |
-| `~/.local/share/icons/hicolor/*/apps/cortex-control.png` | App icon, extracted from your installed copy |
-| `~/.config/hypr/cortex-control.lua` | Window rule and keyboard shortcuts |
+| `~/.local/state/stompgate/` | Launcher log, MIDI send log, last scene/mode/tuner state |
+| `~/.local/share/icons/hicolor/*/apps/stompgate-cortex-control.png` | App icon, extracted from your installed copy |
+| `~/.config/hypr/stompgate.lua` | Window rule and keyboard shortcuts |
 | `~/.config/hypr/hyprland.lua` | **One line added** to load the file above (backed up first) |
-| `~/.config/omarchy/plugins/cortex-control-omarchy.quad-cortex/` | Bar widget |
+| `~/.config/omarchy/plugins/stompgate.widget/` | Bar widget |
 | `~/.config/omarchy/extensions/omarchy-menu.jsonc` | A **marked block** of menu entries (backed up first; the rest isn't touched) |
-| `~/.config/cortex-control-omarchy/config` | Display mode, if you set one |
+| `~/.config/stompgate/config` | Display mode, if you set one |
 
 **Downloads:**
 - **GE-Proton** from GitHub, checked against a pinned SHA-512.
@@ -159,16 +162,15 @@ within a few seconds.
 | **Super + Ctrl + Alt + 1–8** | Press footswitch 1–8 (on a QC mini: A–D on page I, then page II) |
 
 **Seeing the current keys:**
-- **Super + K** (Omarchy's keybindings menu), then search "Quad".
+- **Super + K** (Omarchy's keybindings menu), then search "Stompgate".
 - The **Keys** link in the bar widget.
-- **Learn › Quad Cortex** in the Omarchy menu.
-- `cortex-control --keys` in a terminal.
+- **Learn › Stompgate** in the Omarchy menu.
+- `stompgate --keys` in a terminal.
 
-**Changing them:** edit `~/.config/hypr/cortex-control.lua`. Hyprland reloads
+**Changing them:** edit `~/.config/hypr/stompgate.lua`. Hyprland reloads
 when you save, and every list above follows your changes. Keep the
-"Quad Cortex:" / "Cortex Control:" descriptions so those lists can find your
-bindings. Re-running setup keeps your edited file and writes any newer default
-beside it as `cortex-control.lua.new`.
+"Stompgate:" descriptions so those lists can find your bindings. Re-running setup keeps your edited file and writes any newer default
+beside it as `stompgate.lua.new`.
 
 ### Tiling and window size
 
@@ -183,9 +185,9 @@ would cut the UI off. There are two display modes:
 
 In gamescope mode the app renders at about 80% of your monitor's height, so
 gamescope mostly shrinks the picture and text stays sharp. Switch modes with
-`cortex-control-setup --display gamescope|window`, or for one launch with
-`CORTEX_CONTROL_DISPLAY=window cortex-control`. For a floating window instead,
-use the alternative line in `~/.config/hypr/cortex-control.lua` with `window`
+`stompgate-setup --display gamescope|window`, or for one launch with
+`STOMPGATE_DISPLAY=window stompgate`. For a floating window instead,
+use the alternative line in `~/.config/hypr/stompgate.lua` with `window`
 mode.
 
 ### The bar widget
@@ -219,15 +221,15 @@ open. It's dim when the QC isn't connected. Left-click opens the popup:
 ### From a terminal
 
 ```sh
-cortex-control [--show | --hide | --toggle | --keys]
-cortex-control-qc scene A-H | next | prev
-cortex-control-qc tuner open | close | toggle
-cortex-control-qc mode preset | scene | stomp | next | prev
-cortex-control-qc footswitch 1-8
-cortex-control-qc preset 38C [setlist]     # bank 38, slot C; setlist 1 = My Presets
-cortex-control-qc tap | gig-view open|close
-cortex-control-qc pro-audio on|off | volume output|input 0-150 | mute output|input
-cortex-control-doctor [--json | --status]
+stompgate [--show | --hide | --toggle | --keys]
+stompgate-qc scene A-H | next | prev
+stompgate-qc tuner open | close | toggle
+stompgate-qc mode preset | scene | stomp | next | prev
+stompgate-qc footswitch 1-8
+stompgate-qc preset 38C [setlist]     # bank 38, slot C; setlist 1 = My Presets
+stompgate-qc tap | gig-view open|close
+stompgate-qc pro-audio on|off | volume output|input 0-150 | mute output|input
+stompgate-doctor [--json | --status]
 ```
 
 ### How modes, scenes and footswitches behave
@@ -256,7 +258,7 @@ These use the incoming MIDI messages in Neural DSP's
   preset from the current bank. **Loading a different preset may discard
   unsaved edits**, so save first.
 - **There's no next/previous preset.** MIDI has no message for it. Load a
-  specific preset with `cortex-control-qc preset 38C`.
+  specific preset with `stompgate-qc preset 38C`.
 
 ### Using the Quad Cortex as an audio interface
 
@@ -264,7 +266,7 @@ You don't need Cortex Control for audio. The QC is a standard USB audio device,
 and PipeWire picks it up by itself.
 
 - **For a DAW**, turn on **Pro Audio**, from the widget or with
-  `cortex-control-qc pro-audio on`. The channels then appear as plain `AUX0–7`
+  `stompgate-qc pro-audio on`. The channels then appear as plain `AUX0–7`
   instead of a 7.1 surround layout.
 - **REAPER** runs natively on Linux. Install it (for example
   `omarchy pkg aur add reaper`) along with `pipewire-jack`. Then choose
@@ -275,7 +277,7 @@ and PipeWire picks it up by itself.
 Start with:
 
 ```sh
-cortex-control-doctor
+stompgate-doctor
 ```
 
 It checks the packages, XWayland, Vulkan, the pinned Proton, the prefix and app
@@ -285,14 +287,14 @@ or talks to the QC.
 
 | Symptom | What to do |
 |---|---|
-| The Cortex Control UI is cut off in a tile | Install `gamescope` and run `cortex-control-setup --display gamescope`. See [Tiling and window size](#tiling-and-window-size). |
+| The Cortex Control UI is cut off in a tile | Install `gamescope` and run `stompgate-setup --display gamescope`. See [Tiling and window size](#tiling-and-window-size). |
 | The QC doesn't connect | Use a data cable and the logged-in desktop session. Run the doctor. Its "Quad Cortex … accessible" line must be OK. |
 | Repeated `hidraw_device_set_output_report … Broken pipe` in the Wine log | Known and harmless: the QC rejects one optional message, and everything else works. |
-| Scene, tuner or mode buttons do nothing | Turn on MIDI OVER USB on the QC and check its MIDI channel (1 or OMNI). `~/.local/state/cortex-control-omarchy/qc.log` shows what was sent. |
+| Scene, tuner or mode buttons do nothing | Turn on MIDI OVER USB on the QC and check its MIDI channel (1 or OMNI). `~/.local/state/stompgate/qc.log` shows what was sent. |
 | The bar widget didn't change after an update | Run `omarchy restart shell`. The shell keeps the old widget code until it restarts. |
-| You want a keybinding to open the widget's popup | Not possible: Omarchy lets only its own widgets register IPC. Use the shortcuts above, the menu or `cortex-control-qc`. |
+| You want a keybinding to open the widget's popup | Not possible: Omarchy lets only its own widgets register IPC. Use the shortcuts above, the menu or `stompgate-qc`. |
 | The app says it's offline | The launcher checks `cloud.neuraldsp.com` and passes the result to a PowerShell shim. Check the doctor's "Neural DSP cloud" line. |
-| Something else | See the launcher log at `~/.local/state/cortex-control-omarchy/last-run.log`. For a verbose log, run `WINEDEBUG=err+all cortex-control` from a terminal. |
+| Something else | See the launcher log at `~/.local/state/stompgate/last-run.log`. For a verbose log, run `WINEDEBUG=err+all stompgate` from a terminal. |
 
 **Don't switch Wine to its Wayland driver.** The launcher keeps Cortex Control
 on XWayland, because the Wayland driver gives it a Windows-style frame and
@@ -301,12 +303,12 @@ breaks resizing.
 ## Uninstall
 
 ```sh
-cortex-control-uninstall            # prefix, Proton, window rule, keys, widget, menu entries
-cortex-control-uninstall --keep-prefix   # integration only; keep the app and settings
-sudo pacman -R cortex-control-omarchy
+stompgate-uninstall            # prefix, Proton, window rule, keys, widget, menu entries
+stompgate-uninstall --keep-prefix   # integration only; keep the app and settings
+sudo pacman -R stompgate
 ```
 
-The uninstaller backs up `cortex-control.lua` and the menu file before
+The uninstaller backs up `stompgate.lua` and the menu file before
 changing them. Presets live on the Quad Cortex, not in the prefix.
 
 ## What's tested
@@ -364,7 +366,7 @@ Tested by hand in October 2026 on:
   `gamescope -S fit`, a nested compositor that keeps the app at a fixed size and
   scales the picture to the tile. The launcher, widget and doctor find the
   window whether it's the app's own or gamescope's.
-- **MIDI and audio:** `cortex-control-qc` talks to the QC directly with `amidi`
+- **MIDI and audio:** `stompgate-qc` talks to the QC directly with `amidi`
   and `pactl`, separately from Cortex Control. That's why the controls also
   work while the editor is hidden.
 

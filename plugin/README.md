@@ -1,8 +1,11 @@
-# Quad Cortex widget for the Omarchy bar
+# Stompgate widget for the Omarchy bar
+
+*Quad Cortex controls in your Omarchy bar. Unofficial; not affiliated with
+Neural DSP or Omarchy.*
 
 An [Omarchy](https://omarchy.org) bar widget for people who run Neural DSP's
 Cortex Control editor on Linux with
-**[cortex-control-omarchy](https://github.com/OWNER/cortex-control-omarchy)**.
+**[stompgate](https://github.com/OWNER/stompgate)**.
 <!-- Replace OWNER with the GitHub account when publishing. -->
 
 > [!IMPORTANT]
@@ -12,8 +15,8 @@ Cortex Control editor on Linux with
 > works with. **Never update the Quad Cortex's firmware through Cortex Control
 > on Linux. Use Wi‑Fi updates on the device.**
 
-**This widget needs the cortex-control-omarchy package.** It calls that
-package's `cortex-control`, `cortex-control-qc` and `cortex-control-doctor`
+**This widget needs the stompgate package.** It calls that
+package's `stompgate`, `stompgate-qc` and `stompgate-doctor`
 commands, and does nothing useful without them. Install the package first.
 Its setup also installs this widget for you, so most people don't need this
 repository.
@@ -50,7 +53,7 @@ highlights follow the last command sent from your computer.
 ## Install on its own
 
 ```sh
-omarchy plugin add https://github.com/OWNER/omarchy-quad-cortex --enable
+omarchy plugin add https://github.com/OWNER/stompgate-widget --enable
 ```
 
 ## Settings
@@ -64,4 +67,4 @@ omarchy plugin add https://github.com/OWNER/omarchy-quad-cortex --enable
 ## License
 
 [MIT](LICENSE). This widget is published from the `plugin/` folder of
-cortex-control-omarchy. Report issues there.
+stompgate. Report issues there.

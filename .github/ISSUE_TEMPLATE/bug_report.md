@@ -15,18 +15,18 @@ labels: bug
 
 **Setup**
 - Device: Quad Cortex / Quad Cortex mini
-- Package version (`pacman -Q cortex-control-omarchy`):
+- Package version (`pacman -Q stompgate`):
 - Display mode (gamescope / window):
 - GPU and driver:
 
-**`cortex-control-doctor` output**
+**`stompgate-doctor` output**
 ```
 (paste here; remove anything personal, like usernames in paths)
 ```
 
 **Logs, if relevant**
-- Editor problems: `~/.local/state/cortex-control-omarchy/last-run.log`
-- MIDI problems: `~/.local/state/cortex-control-omarchy/qc.log`
+- Editor problems: `~/.local/state/stompgate/last-run.log`
+- MIDI problems: `~/.local/state/stompgate/qc.log`
 
 <!-- Never try a firmware update through Cortex Control to test something.
      Update firmware over Wi-Fi on the QC itself. -->

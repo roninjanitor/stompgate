@@ -8,10 +8,10 @@ post_install() {
   _reload_udev
   cat <<'MSG'
 
-Cortex Control for Omarchy:
-  1. Run as your user: cortex-control-setup
-  2. Start "Cortex Control" from the app launcher, or run: cortex-control
-  3. Check things any time with: cortex-control-doctor
+Stompgate: Cortex Control for Omarchy (unofficial):
+  1. Run as your user: stompgate-setup
+  2. Start "Cortex Control" from the app launcher, or run: stompgate
+  3. Check things any time with: stompgate-doctor
 
 Neural DSP's installer and app are not included; setup uses your own copy.
 Never update firmware through Cortex Control. Use Wi-Fi updates on the QC.
@@ -25,5 +25,5 @@ post_upgrade() {
 
 post_remove() {
   udevadm control --reload-rules || true
-  echo "Per-user files (prefix, Proton, Hyprland rule) are kept. Remove them first with cortex-control-uninstall."
+  echo "Per-user files (prefix, Proton, Hyprland rule) are kept. Remove them first with stompgate-uninstall."
 }

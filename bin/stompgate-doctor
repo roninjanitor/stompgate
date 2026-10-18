@@ -6,15 +6,15 @@
 set -uo pipefail
 
 _here="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-if [[ -f $_here/../lib/cortex-control-omarchy.sh ]]; then
-  source "$_here/../lib/cortex-control-omarchy.sh"
+if [[ -f $_here/../lib/stompgate.sh ]]; then
+  source "$_here/../lib/stompgate.sh"
 else
-  source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
+  source /usr/share/stompgate/lib/stompgate.sh
 fi
 
 usage() {
   cat <<'EOF'
-Usage: cortex-control-doctor [--json | --status]
+Usage: stompgate-doctor [--json | --status]
 
   --json    Full report as JSON.
   --status  Quick device and app status as JSON, for the Omarchy bar widget.
@@ -64,14 +64,22 @@ for pkg in umu-launcher curl jq icoutils; do
   elif [[ $pkg == icoutils ]]; then
     add WARN "Package $pkg" "missing; the menu entry uses a generic icon"
   else
-    add FAIL "Package $pkg" "missing; install the cortex-control-omarchy package"
+    add FAIL "Package $pkg" "missing; install the stompgate package"
   fi
 done
 
-if pacman -Q cortex-control-omarchy >/dev/null 2>&1; then
-  add OK "Package cortex-control-omarchy" "$(pacman -Q cortex-control-omarchy | cut -d' ' -f2)"
+if pacman -Q stompgate >/dev/null 2>&1; then
+  add OK "Package stompgate" "$(pacman -Q stompgate | cut -d' ' -f2)"
 else
-  add WARN "Package cortex-control-omarchy" "not installed (running from a checkout?)"
+  add WARN "Package stompgate" "not installed (running from a checkout?)"
+fi
+
+leftovers=$(old_install_leftovers)
+if [[ -n $leftovers ]]; then
+  add WARN "Old install" "cortex-control-omarchy files remain ($(wc -l <<<"$leftovers") items); run stompgate-setup to move them"
+fi
+if pacman -Q cortex-control-omarchy >/dev/null 2>&1; then
+  add WARN "Old package" "cortex-control-omarchy is still installed; installing stompgate replaces it"
 fi
 
 # --- Display and graphics ---------------------------------------------------
@@ -101,13 +109,13 @@ fi
 if [[ -x $PROTON_DIR/proton ]]; then
   add OK "Proton" "$(cut -d' ' -f2 "$PROTON_DIR/version" 2>/dev/null || echo "$PROTON_VERSION")"
 else
-  add FAIL "Proton" "$PROTON_VERSION not found in $DATA_DIR/proton; run cortex-control-setup"
+  add FAIL "Proton" "$PROTON_VERSION not found in $DATA_DIR/proton; run stompgate-setup"
 fi
 
 if [[ -f $PREFIX/system.reg ]]; then
   add OK "Wine prefix" "$PREFIX"
 else
-  add FAIL "Wine prefix" "missing ($PREFIX); run cortex-control-setup"
+  add FAIL "Wine prefix" "missing ($PREFIX); run stompgate-setup"
 fi
 
 if [[ -f $APP ]]; then
@@ -117,16 +125,16 @@ if [[ -f $APP ]]; then
     add WARN "Cortex Control" "installed, but not the tested $CC_VERSION build"
   fi
 else
-  add FAIL "Cortex Control" "not installed; run cortex-control-setup"
+  add FAIL "Cortex Control" "not installed; run stompgate-setup"
 fi
 
 # --- Quad Cortex --------------------------------------------------------------
 rules=()
-for f in /usr/lib/udev/rules.d/70-cortex-control-omarchy.rules /etc/udev/rules.d/70-cortex-control-omarchy.rules; do
+for f in /usr/lib/udev/rules.d/70-stompgate.rules /etc/udev/rules.d/70-stompgate.rules; do
   [[ -f $f ]] && rules+=("$f")
 done
 case ${#rules[@]} in
-  0) add FAIL "udev rule" "not installed; install the cortex-control-omarchy package" ;;
+  0) add FAIL "udev rule" "not installed; install the stompgate package" ;;
   1) add OK "udev rule" "${rules[0]}" ;;
   *) add WARN "udev rule" "installed twice (${rules[*]}); remove the /etc copy" ;;
 esac
@@ -158,7 +166,7 @@ else
 fi
 
 if [[ -n $nodes ]]; then
-  qc_tool="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/cortex-control-qc"
+  qc_tool="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/stompgate-qc"
   if [[ -x $qc_tool ]]; then
     midi=$("$qc_tool" midi-status 2>/dev/null)
     if [[ $(jq -r '.present' <<<"$midi" 2>/dev/null) == true ]]; then
@@ -186,7 +194,7 @@ case $(display_mode) in
   gamescope) add OK "Display" "gamescope: letterboxed into any tile size" ;;
   *)
     if command -v gamescope >/dev/null; then
-      add OK "Display" "normal window, pseudotiled (gamescope available: cortex-control-setup --display gamescope)"
+      add OK "Display" "normal window, pseudotiled (gamescope available: stompgate-setup --display gamescope)"
     else
       add OK "Display" "normal window, pseudotiled; tiles narrower than ~800 px crop the UI (install gamescope to fix)"
     fi
@@ -198,30 +206,30 @@ if [[ -f $HYPR_RULE_FILE ]] && grep -qF "$HYPR_REQUIRE_LINE" "$HYPR_DIR/hyprland
 elif grep -q "$WINDOW_CLASS" "$HYPR_DIR/hyprland.lua" 2>/dev/null; then
   add OK "Hyprland rule" "your own rule in hyprland.lua"
 else
-  add WARN "Hyprland rule" "missing; the window may tile and get cropped (run cortex-control-setup)"
+  add WARN "Hyprland rule" "missing; the window may tile and get cropped (run stompgate-setup)"
 fi
 
-launcher="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/cortex-control"
+launcher="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/stompgate"
 if [[ -x $launcher ]] && command -v omarchy-menu-keybindings >/dev/null; then
   bound=$("$launcher" --keys --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
   if (( bound > 0 )); then
-    add OK "Keyboard shortcuts" "$bound bound (cortex-control --keys)"
+    add OK "Keyboard shortcuts" "$bound bound (stompgate --keys)"
   else
-    add WARN "Keyboard shortcuts" "none bound; run cortex-control-setup"
+    add WARN "Keyboard shortcuts" "none bound; run stompgate-setup"
   fi
   [[ -f $HYPR_RULE_FILE.new ]] && add WARN "Keyboard shortcuts" "a newer default is waiting in $HYPR_RULE_FILE.new"
 fi
 
 if [[ -f $MENU_FILE ]] && grep -qF "$MENU_BEGIN" "$MENU_FILE"; then
-  add OK "Omarchy menu" "Trigger › Quad Cortex and Learn › Quad Cortex"
+  add OK "Omarchy menu" "Trigger › Stompgate and Learn › Stompgate"
 else
-  add OK "Omarchy menu" "no entries (optional; cortex-control-setup adds them)"
+  add OK "Omarchy menu" "no entries (optional; stompgate-setup adds them)"
 fi
 
 if [[ ! -d $PLUGIN_DIR ]]; then
   add OK "Bar widget" "not installed (optional)"
 elif [[ -d $SHARE_DIR/plugin ]] && ! plugin_current "$SHARE_DIR/plugin"; then
-  add WARN "Bar widget" "older than the installed package; run cortex-control-setup to update it"
+  add WARN "Bar widget" "older than the installed package; run stompgate-setup to update it"
 else
   add OK "Bar widget" "$PLUGIN_ID"
 fi

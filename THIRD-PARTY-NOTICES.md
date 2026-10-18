@@ -1,6 +1,6 @@
 # Third-party notices
 
-cortex-control-omarchy is MIT licensed (see [LICENSE](LICENSE)). It builds on
+stompgate is MIT licensed (see [LICENSE](LICENSE)). It builds on
 three earlier MIT-licensed projects. Their notices are reproduced below, along
 with what this project took from each.
 
@@ -18,7 +18,7 @@ under their own licenses.
 **Adapted here:**
 - the udev rule matched to the Quad Cortex's product IDs (`udev/`),
 - the `powershell.bat` connectivity shim and the launcher logic that feeds it
-  (`shims/powershell.bat`, `bin/cortex-control`),
+  (`shims/powershell.bat`, `bin/stompgate`),
 - the Arch packaging layout and the per-user setup and uninstall split.
 
 ```
@@ -87,7 +87,7 @@ SOFTWARE.
 - the Proton-based approach and enabling hidraw for the QC,
 - full-size Quad Cortex testing on NVIDIA,
 - the read-only `doctor` diagnostics design, reimplemented here as
-  `cortex-control-doctor`.
+  `stompgate-doctor`.
 
 ```
 MIT License

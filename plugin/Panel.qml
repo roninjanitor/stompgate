@@ -8,14 +8,14 @@ import qs.Ui
 
 // Quad Cortex bar widget. The icon shows while Cortex Control runs (by default);
 // the popup shows/hides the editor, recalls scenes, toggles the tuner and sets
-// the QC's audio. Device state comes from the cortex-control-* commands.
+// the QC's audio. Device state comes from the stompgate commands.
 // MIDI is one-way: the QC never reports its scene or tuner, so those buttons
-// highlight what was last sent, from here or a keybinding (cortex-control-qc
+// highlight what was last sent, from here or a keybinding (stompgate-qc
 // keeps that state).
 Panel {
   id: qc
-  moduleName: "cortex-control-omarchy.quad-cortex"
-  ipcTarget: "cortex-control-omarchy.quad-cortex"
+  moduleName: "stompgate.widget"
+  ipcTarget: "stompgate.widget"
   manageIpc: false
 
   readonly property string glyph: "󰥛" // nf-md-sine_wave: a generic audio-signal symbol
@@ -39,7 +39,7 @@ Panel {
   property var checks: []
   property bool doctorRan: false
   property var audio: ({ present: false })
-  property var keys: [] // current shortcuts, read from Hyprland via cortex-control --keys
+  property var keys: [] // current shortcuts, read from Hyprland via stompgate --keys
   property var midi: ({ present: false })
   readonly property int lastScene: midi.scene === undefined ? -1 : midi.scene
   readonly property bool tunerOpen: midi.tunerOpen === true
@@ -82,7 +82,7 @@ Panel {
   }
 
   function openKeys() {
-    run("cortex-control --keys --menu")
+    run("stompgate --keys --menu")
     close()
   }
 
@@ -95,15 +95,15 @@ Panel {
     if (bar) bar.run(command)
   }
 
-  // Fire-and-forget a cortex-control-qc command, then re-read the state.
+  // Fire-and-forget a stompgate-qc command, then re-read the state.
   function qcCommand(args) {
-    run("cortex-control-qc " + args)
+    run("stompgate-qc " + args)
     deviceRefreshDelay.restart()
   }
 
   function editorAction() {
-    if (editorLabel === "Hide") run("cortex-control --hide")
-    else run("cortex-control --show")
+    if (editorLabel === "Hide") run("stompgate --hide")
+    else run("stompgate --show")
     close()
   }
 
@@ -147,7 +147,7 @@ Panel {
 
   Process {
     id: statusProcess
-    command: ["cortex-control-doctor", "--status"]
+    command: ["stompgate-doctor", "--status"]
     stdout: StdioCollector { id: statusOut; waitForEnd: true }
     onExited: {
       try {
@@ -159,7 +159,7 @@ Panel {
 
   Process {
     id: doctorProcess
-    command: ["cortex-control-doctor", "--json"]
+    command: ["stompgate-doctor", "--json"]
     stdout: StdioCollector { id: doctorOut; waitForEnd: true }
     onExited: {
       try {
@@ -171,7 +171,7 @@ Panel {
 
   Process {
     id: audioProcess
-    command: ["cortex-control-qc", "audio-status"]
+    command: ["stompgate-qc", "audio-status"]
     stdout: StdioCollector { id: audioOut; waitForEnd: true }
     onExited: {
       try { qc.audio = JSON.parse(String(audioOut.text || "{}")) } catch (e) { qc.audio = { present: false } }
@@ -180,7 +180,7 @@ Panel {
 
   Process {
     id: midiProcess
-    command: ["cortex-control-qc", "midi-status"]
+    command: ["stompgate-qc", "midi-status"]
     stdout: StdioCollector { id: midiOut; waitForEnd: true }
     onExited: {
       try { qc.midi = JSON.parse(String(midiOut.text || "{}")) } catch (e) { qc.midi = { present: false } }
@@ -189,7 +189,7 @@ Panel {
 
   Process {
     id: keysProcess
-    command: ["cortex-control", "--keys", "--json"]
+    command: ["stompgate", "--keys", "--json"]
     stdout: StdioCollector { id: keysOut; waitForEnd: true }
     onExited: {
       try { qc.keys = JSON.parse(String(keysOut.text || "[]")) } catch (e) { qc.keys = [] }
@@ -221,9 +221,9 @@ Panel {
     bar: qc.bar
     text: qc.shown ? qc.glyph : ""
     foreground: qc.barIconColor
-    tooltipText: "Quad Cortex: " + qc.stateText
+    tooltipText: "Stompgate: " + qc.stateText
     onPressed: function(buttonCode) {
-      if (buttonCode === Qt.MiddleButton) { qc.run("cortex-control --toggle"); qc.refreshStatus() }
+      if (buttonCode === Qt.MiddleButton) { qc.run("stompgate --toggle"); qc.refreshStatus() }
       else if (buttonCode === Qt.RightButton) qc.refreshStatus()
       else qc.toggle()
     }
@@ -251,7 +251,7 @@ Panel {
         else if ((t === "t" || t === "T") && qc.connected && qc.midi.present) qc.toggleTuner()
         else if ((t === "m" || t === "M") && qc.connected && qc.midi.present) qc.setMode((qc.lastMode + 1) % 3)
         else if (t === "k" || t === "K") qc.openKeys()
-        else if (t === "d" || t === "D") { qc.run("omarchy-launch-floating-terminal-with-presentation cortex-control-doctor"); qc.close() }
+        else if (t === "d" || t === "D") { qc.run("omarchy-launch-floating-terminal-with-presentation stompgate-doctor"); qc.close() }
       }
 
       Flickable {
@@ -538,8 +538,8 @@ Panel {
 
             FooterLink {
               text: !qc.doctorRan ? "Checking…" : qc.problems.length === 0 ? "✓ Setup OK" : "Doctor"
-              tooltip: "Full cortex-control-doctor report (d)"
-              onActivated: { qc.run("omarchy-launch-floating-terminal-with-presentation cortex-control-doctor"); qc.close() }
+              tooltip: "Full stompgate-doctor report (d)"
+              onActivated: { qc.run("omarchy-launch-floating-terminal-with-presentation stompgate-doctor"); qc.close() }
             }
 
             FooterLink {

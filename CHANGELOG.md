@@ -3,7 +3,9 @@
 ## 0.2.0 (first public release)
 
 Unofficial. Not affiliated with Neural DSP or Omarchy. Development builds were
-numbered 0.1.0-N.
+called cortex-control-omarchy 0.1.0-N. The project was renamed **Stompgate** so
+its name doesn't borrow Neural DSP's "Cortex" branding. `stompgate-setup` moves
+an existing install to the new names, and the new package replaces the old one.
 
 ### Running Cortex Control
 - **Runtime:** Cortex Control 4.1.0 runs through umu-launcher with a pinned,
@@ -11,7 +13,7 @@ numbered 0.1.0-N.
   used or replaced.
 - **QC connection:** enabled with `PROTON_ENABLE_HIDRAW` plus a udev rule
   limited to the Quad Cortex (`152a:880a`) and Quad Cortex mini (`152a:892f`).
-- **Setup:** `cortex-control-setup` is per-user, can be re-run safely and
+- **Setup:** `stompgate-setup` is per-user, can be re-run safely and
   checks the installer and app hashes. It offers Neural DSP's setup wizard or a
   silent install.
 - **Online indicator:** the launcher feeds the PowerShell connectivity shim
@@ -20,7 +22,7 @@ numbered 0.1.0-N.
 ### Omarchy integration
 - **Tiling:** two display modes. `gamescope` (the default when installed)
   letterboxes the app into any tile size. `window` pseudotiles it.
-- **Show/hide:** `cortex-control --show/--hide/--toggle`, using a hidden
+- **Show/hide:** `stompgate --show/--hide/--toggle`, using a hidden
   special workspace. The app stays connected while hidden.
 - **Keyboard shortcuts with OSD feedback:**
   - Super+Shift+Q: show or hide the editor
@@ -29,21 +31,21 @@ numbered 0.1.0-N.
   - Super+Alt+M: mode
   - Super+Alt+B: tap tempo
   - Super+Ctrl+Alt+1–8: footswitches
-- **Keys help:** `cortex-control --keys` (text, `--json`, `--menu`) reads the
+- **Keys help:** `stompgate --keys` (text, `--json`, `--menu`) reads the
   live bindings. Setup keeps your edited keys and writes newer defaults to
-  `cortex-control.lua.new`.
+  `stompgate.lua.new`.
 - **Bar widget:** shown while Cortex Control runs, with show/hide, mode,
   scenes, footswitches, tuner, tap tempo, Pro Audio and volume, setup status
   and a Keys link.
-- **Omarchy menu:** Trigger › Quad Cortex and Learn › Quad Cortex.
+- **Omarchy menu:** Trigger › Stompgate and Learn › Stompgate.
 
 ### Device control without the editor
-- **`cortex-control-qc`:** the QC's documented incoming MIDI messages (scenes,
+- **`stompgate-qc`:** the QC's documented incoming MIDI messages (scenes,
   modes, footswitches, tuner, tap tempo, Gig View, presets), plus PipeWire
   audio: the Pro Audio profile, volume and mute.
 
 ### Diagnostics
-- **`cortex-control-doctor`:** read-only checks, with `--json`, and `--status`
+- **`stompgate-doctor`:** read-only checks, with `--json`, and `--status`
   for the widget.
 
 ### Documentation
