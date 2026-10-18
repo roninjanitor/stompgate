@@ -25,6 +25,8 @@ Usage: cortex-control-setup [--installer PATH] [--silent] [--no-hypr]
   --no-hypr         Don't add the Hyprland window rule.
   --no-plugin       Don't add the Quad Cortex widget to the Omarchy bar.
   --no-menu         Don't add Quad Cortex entries to the Omarchy menu.
+  --display MODE    gamescope: letterbox the app into any tile size (default when
+                    gamescope is installed). window: a normal window, pseudotiled.
 EOF
 }
 
@@ -40,6 +42,13 @@ while (( $# > 0 )); do
     --no-hypr) hypr=0; shift ;;
     --no-plugin) plugin=0; shift ;;
     --no-menu) menu=0; shift ;;
+    --display)
+      [[ ${2:-} == gamescope || ${2:-} == window ]] || die "--display must be gamescope or window"
+      mkdir -p "$(dirname "$CONFIG_FILE")"
+      { grep -v '^display=' "$CONFIG_FILE" 2>/dev/null || true; echo "display=$2"; } >"$CONFIG_FILE.tmp"
+      mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+      shift 2
+      ;;
     -h | --help) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
   esac
@@ -290,6 +299,19 @@ install_menu() {
   info "Added Quad Cortex to the Omarchy menu (Trigger › Quad Cortex, Learn › Quad Cortex)"
 }
 
+report_display() {
+  case $(display_mode) in
+    gamescope) info "Display: gamescope (fits any tile size without cropping)" ;;
+    *)
+      if command -v gamescope >/dev/null; then
+        info "Display: normal window, pseudotiled. For any tile size: cortex-control-setup --display gamescope"
+      else
+        info "Display: normal window, pseudotiled. Tiles under ~800 px wide crop it; install gamescope to fix that."
+      fi
+      ;;
+  esac
+}
+
 check_qc_access() {
   local nodes
   nodes=$(qc_hidraw_nodes)
@@ -314,6 +336,7 @@ install_icon
 install_hypr_rule
 install_plugin
 install_menu
+report_display
 check_qc_access
 
 cat <<'EOF'

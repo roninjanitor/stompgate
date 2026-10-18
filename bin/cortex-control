@@ -85,7 +85,7 @@ if [[ ! -f $APP || ! -x $PROTON_DIR/proton ]]; then
 fi
 
 # Reuse an existing window instead of starting a second copy on the same QC.
-window=$(hyprctl clients -j 2>/dev/null | jq -c --arg c "$WINDOW_CLASS" '[.[] | select(.class == $c)][0] // empty')
+window=$(hyprctl clients -j 2>/dev/null | jq -c "[.[] | $WINDOW_JQ][0] // empty")
 if [[ -n $window ]]; then
   address=$(jq -r '.address' <<<"$window")
   window_ws=$(jq -r '.workspace.name' <<<"$window")
@@ -131,8 +131,24 @@ export WINEDEBUG="${WINEDEBUG:--all}"
 # resizing; keep it on XWayland.
 unset PROTON_ENABLE_WAYLAND PROTON_USE_WAYLAND
 
+launch=(umu-run "$APP" "$@")
+if [[ $(display_mode) == gamescope ]]; then
+  # Render at ~80% of the monitor's height and let gamescope scale that to the
+  # tile with letterboxing ("fit"), so the UI is never cropped at any size.
+  # Mostly shrinking (rather than enlarging) keeps text sharp.
+  read -r mon_w mon_h < <(hyprctl monitors -j 2>/dev/null |
+    jq -r '[.[] | select(.focused)][0] // .[0] | "\((.width / .scale) | floor) \((.height / .scale) | floor)"')
+  height=$(( ${mon_h:-1080} * 8 / 10 ))
+  width=$(awk -v h="$height" -v r="$APP_RATIO" 'BEGIN { printf "%d", h * r }')
+  if (( width < APP_MIN_WIDTH )); then
+    width=$APP_MIN_WIDTH
+    height=$(awk -v w="$width" -v r="$APP_RATIO" 'BEGIN { printf "%d", w / r }')
+  fi
+  launch=(gamescope -w "$width" -h "$height" -W "$width" -H "$height" -S fit -F linear -- "${launch[@]}")
+fi
+
 if [[ -t 1 ]]; then
-  umu-run "$APP" "$@" 2>&1 | tee "$log"
+  "${launch[@]}" 2>&1 | tee "$log"
 else
-  exec umu-run "$APP" "$@" >"$log" 2>&1
+  exec "${launch[@]}" >"$log" 2>&1
 fi

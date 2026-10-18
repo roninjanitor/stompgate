@@ -6,7 +6,8 @@ connects over USB, so you don't need a Windows VM. It also integrates with
 Omarchy:
 
 - **App launcher:** Cortex Control has its own entry, opened with Super + Space.
-- **Window rule:** a Hyprland rule keeps the editor floating at the right shape.
+- **Tiling:** the editor tiles like any other window at any tile size, on any
+  screen, without its UI getting cut off.
 - **Bar widget:** shows the QC's status and gives quick controls.
 - **Keyboard shortcuts:** show or hide the editor, toggle the tuner, and switch
   scenes and modes, with feedback on Omarchy's on-screen display.
@@ -36,6 +37,9 @@ Setup installs your own copy of the official installer and checks it by hash.
   `~/Downloads`, setup downloads it from Neural DSP.
 - **About 2 GB of disk space** for the pinned GE-Proton, umu's Steam runtime
   and the Wine prefix.
+- **Recommended: `gamescope`** (`sudo pacman -S gamescope`). It lets Cortex
+  Control tile at any size without being cut off. See
+  [Tiling and window size](#tiling-and-window-size).
 
 ## Install
 
@@ -67,6 +71,8 @@ can be run again safely.
 5. Adds the Hyprland window rule and keyboard shortcuts, the bar widget and the
    Omarchy menu entries. Skip any of these with `--no-hypr`, `--no-plugin` or
    `--no-menu`.
+6. Picks the display mode: `gamescope` if it's installed, otherwise `window`.
+   Change it later with `cortex-control-setup --display gamescope|window`.
 
 **On the Quad Cortex**, for the scene, tuner, mode and footswitch controls:
 1. Go to **Settings → Device → MIDI**.
@@ -101,6 +107,24 @@ when you save, and every list above follows your changes. Keep the
 "Quad Cortex:" / "Cortex Control:" descriptions so those lists can find your
 bindings. Re-running setup keeps your edited file and writes any newer default
 beside it as `cortex-control.lua.new`.
+
+### Tiling and window size
+
+Cortex Control locks its window to about **1.4:1** and scales its whole UI to
+that shape. A normal tile of any other shape, like half of a 16:9 screen,
+would cut the UI off. There are two display modes:
+
+| Mode | How it looks | Tiles cut off the UI? |
+|---|---|---|
+| **`gamescope`** (default when installed) | The app runs inside [gamescope](https://github.com/ValveSoftware/gamescope), which scales it to fit the tile with black bars at the edges. | **Never**, at any size or screen. Small tiles just make the text smaller. |
+| **`window`** | A normal window, **pseudotiled**: it joins the tiling layout but keeps its 1.4:1 shape, centered in the tile, and shrinks evenly when the tile is smaller. | Only below about **800 px** wide, the app's own minimum size (for example, half of a 1366×768 laptop screen). |
+
+In gamescope mode the app renders at about 80% of your monitor's height, so
+gamescope mostly shrinks the picture and text stays sharp. Switch modes with
+`cortex-control-setup --display gamescope|window`, or for one launch with
+`CORTEX_CONTROL_DISPLAY=window cortex-control`. For a floating window instead,
+use the alternative line in `~/.config/hypr/cortex-control.lua` with `window`
+mode.
 
 ### The bar widget
 
@@ -199,7 +223,7 @@ or talks to the QC.
 
 | Symptom | What to do |
 |---|---|
-| The Cortex Control window is cut off or has empty space | The app locks itself to about 1.4:1 and scales its UI, so it doesn't tile. The window rule floats it, and resizing keeps the ratio. |
+| The Cortex Control UI is cut off in a tile | Install `gamescope` and run `cortex-control-setup --display gamescope`. See [Tiling and window size](#tiling-and-window-size). |
 | The QC doesn't connect | Use a data cable and the logged-in desktop session. Run the doctor. Its "Quad Cortex … accessible" line must be OK. |
 | Repeated `hidraw_device_set_output_report … Broken pipe` in the Wine log | Known and harmless: the QC rejects one optional message, and everything else works. |
 | Scene, tuner or mode buttons do nothing | Turn on MIDI OVER USB on the QC and check its MIDI channel (1 or OMNI). `~/.local/state/cortex-control-omarchy/qc.log` shows what was sent. |
@@ -240,8 +264,11 @@ Tested by hand in October 2026 on:
   Cloud.
 - **Install:** a full uninstall followed by a reinstall from the package
   completes.
-- **Window and shortcuts:** show and hide; the window rule; keyboard shortcuts
-  with OSD feedback.
+- **Window and shortcuts:** show and hide; keyboard shortcuts with OSD
+  feedback.
+- **Tiling:** gamescope mode letterboxes the full UI into tiles from full size
+  down to 601 px wide. In window mode, pseudotiling keeps the full UI down to
+  801 px.
 - **MIDI:** scene, tuner, mode and footswitch control.
 
 **Not tested yet. Reports are welcome:**
@@ -271,6 +298,10 @@ Tested by hand in October 2026 on:
   gives your user access to that device node and nothing else.
 - **Rendering:** DXVK (bundled with Proton) draws the JUCE/Direct2D UI. Without
   it the window is black.
+- **Window:** in gamescope mode the launcher starts the app inside
+  `gamescope -S fit`, a nested compositor that keeps the app at a fixed size and
+  scales the picture to the tile. The launcher, widget and doctor find the
+  window whether it's the app's own or gamescope's.
 - **MIDI and audio:** `cortex-control-qc` talks to the QC directly with `amidi`
   and `pactl`, separately from Cortex Control. That's why the controls also
   work while the editor is hidden.

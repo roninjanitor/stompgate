@@ -6,9 +6,17 @@
 -- Super + K (search "Quad") or: cortex-control --keys
 -- Keep the "Quad Cortex:" / "Cortex Control:" descriptions so the keys menu
 -- and the bar widget can find your bindings.
--- The app locks its window to about 1.4:1 and scales its UI to fit, so a tile of
--- any other shape crops it. Float it instead, and keep that ratio when resizing.
-o.window({ class = "^steam_app_cortexcontrol$" }, { float = true, center = true, size = { 1600, 1140 }, keep_aspect_ratio = true })
+-- The app locks its window to about 1.4:1 and scales its UI to fit, so a plain
+-- tile of another shape crops it. Pseudotile it instead: it joins the tiling
+-- layout but keeps its 1.4:1 shape, centered in its tile, and Hyprland scales it
+-- down evenly when the tile is smaller. Below about 800 px wide the app reaches
+-- its minimum size and gets cropped slightly.
+o.window({ class = "^steam_app_cortexcontrol$" }, { tile = true, pseudo = true, size = { 1600, 1140 } })
+-- With display=gamescope (the default when gamescope is installed) the app runs
+-- inside a gamescope window that tiles normally and letterboxes the app into any
+-- tile size; the rule above then applies only in display=window mode.
+-- Prefer a floating window? Use this line instead of the pseudotile one:
+-- o.window({ class = "^steam_app_cortexcontrol$" }, { float = true, center = true, size = { 1600, 1140 }, keep_aspect_ratio = true })
 
 -- Keyboard control. Q for Quad Cortex. Scenes and the tuner go over MIDI, so the
 -- QC needs MIDI OVER USB on (Settings > Device > MIDI); each press shows the OSD.

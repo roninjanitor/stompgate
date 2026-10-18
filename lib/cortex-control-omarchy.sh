@@ -17,6 +17,11 @@ QC_PROTON_HIDRAW="0x152A/0x880A,0x152A/0x892F"
 
 GAMEID="umu-cortexcontrol"
 WINDOW_CLASS="steam_app_cortexcontrol"
+# jq filter for the Cortex Control window: the app's own XWayland window, or
+# the gamescope window it runs inside (titled after the app).
+WINDOW_JQ='select(.class == "steam_app_cortexcontrol" or (.class == "gamescope" and (.title | startswith("Cortex Control"))))'
+APP_MIN_WIDTH=800  # below about 800x570 the app crops its own UI
+APP_RATIO="1.404"
 HIDDEN_WORKSPACE="special:cortex-control"
 CLOUD_CHECK_URL="https://cloud.neuraldsp.com/"
 
@@ -35,6 +40,20 @@ MENU_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/extensions/omarchy-menu.jso
 MENU_BEGIN="// >>> cortex-control-omarchy"
 MENU_END="// <<< cortex-control-omarchy"
 ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
+
+# How the window is shown. gamescope: inside gamescope, which letterboxes the
+# app into any tile size. window: a normal window, pseudotiled by the Hyprland
+# rule. Set with cortex-control-setup --display, or CORTEX_CONTROL_DISPLAY.
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/cortex-control-omarchy/config"
+display_mode() {
+  local mode="${CORTEX_CONTROL_DISPLAY:-}"
+  [[ -n $mode ]] || mode=$(sed -n 's/^display=//p' "$CONFIG_FILE" 2>/dev/null | tail -1)
+  if [[ -z $mode ]]; then
+    command -v gamescope >/dev/null && mode="gamescope" || mode="window"
+  fi
+  [[ $mode == gamescope ]] && ! command -v gamescope >/dev/null && mode="window"
+  echo "$mode"
+}
 
 # Static files: the checkout when run from it, otherwise the installed package.
 if [[ -z ${SHARE_DIR:-} ]]; then

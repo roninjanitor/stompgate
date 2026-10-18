@@ -6,7 +6,7 @@
 
 pkgname=cortex-control-omarchy
 pkgver=0.1.0
-pkgrel=13
+pkgrel=14
 pkgdesc='Run Neural DSP Cortex Control (Quad Cortex editor) on Omarchy via umu-launcher and GE-Proton'
 arch=('any')
 license=('MIT')
@@ -29,6 +29,7 @@ depends=(
   'xdg-user-dirs'
 )
 optdepends=(
+  'gamescope: letterbox Cortex Control into any tile size without cropping'
   'gum: choose the install mode interactively'
   'vulkan-tools: let cortex-control-doctor name the Vulkan GPU'
   'pipewire-jack: use the Quad Cortex as an audio interface in JACK apps such as REAPER'
