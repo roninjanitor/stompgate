@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stompgate</title>
+<meta name="description" content="Run Neural DSP's Cortex Control editor for the Quad Cortex on Omarchy Linux. Unofficial community project.">
+<meta name="theme-color" content="#000000">
+<meta property="og:title" content="Stompgate">
+<meta property="og:description" content="Cortex Control for the Quad Cortex, on Omarchy. Tiles, keyboard shortcuts, a bar widget and MIDI controls. Unofficial.">
+<meta property="og:image" content="https://stompgate.com/img/editor.png">
+<meta property="og:url" content="https://stompgate.com/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/space-grotesk-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: "Space Grotesk"; font-weight: 500; font-display: swap; src: url(fonts/space-grotesk-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Space Grotesk"; font-weight: 700; font-display: swap; src: url(fonts/space-grotesk-latin-700-normal.woff2) format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url(fonts/jetbrains-mono-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 600; font-display: swap; src: url(fonts/jetbrains-mono-latin-600-normal.woff2) format("woff2"); }
+
+:root {
+  color-scheme: dark;
+  --void: #000;
+  --panel: #050506;
+  --panel-2: #0a0a0c;
+  --hair: rgba(255, 255, 255, .07);
+  --hair-2: rgba(255, 255, 255, .13);
+  --text: #ececef;
+  --muted: #8b8c95;
+  --dim: #55565e;
+  --ember: #ffb547;
+  --ember-glow: rgba(255, 181, 71, .35);
+  --ember-faint: rgba(255, 181, 71, .08);
+  --live: #3dff9a;
+  --alarm: #ff5a36;
+  --display: "Space Grotesk", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--void); color: var(--text);
+  font: 16.5px/1.65 var(--display); -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+::selection { background: var(--ember); color: #000; }
+a { color: var(--ember); text-decoration: none; }
+a:hover { text-shadow: 0 0 12px var(--ember-glow); }
+code, pre, kbd { font-family: var(--mono); }
+code { font-size: .86em; color: #d9d9de; background: var(--panel-2); border: 1px solid var(--hair); border-radius: 3px; padding: .08em .4em; }
+
+/* backdrop: faint grid that fades out, plus an ember haze behind the hero */
+.backdrop { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.backdrop::before {
+  content: ""; position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--hair) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hair) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
+  opacity: .55;
+}
+.backdrop::after {
+  content: ""; position: absolute; left: 50%; top: -280px; width: 1100px; height: 640px; transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(255, 181, 71, .13), transparent);
+  filter: blur(20px);
+}
+.wrap { position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+
+/* nav */
+nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 0; }
+.brand { display: flex; align-items: center; gap: 10px; font: 600 15px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--text); }
+.brand svg { width: 26px; height: 26px; filter: drop-shadow(0 0 6px var(--ember-glow)); }
+nav .links { display: flex; gap: 26px; font: 12.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+nav .links a { color: var(--muted); }
+nav .links a:hover { color: var(--text); text-shadow: none; }
+
+/* hero */
+.hero { position: relative; padding: 72px 0 40px; }
+.status {
+  display: inline-flex; align-items: center; gap: 10px; font: 12px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--hair-2); background: rgba(5, 5, 6, .7); border-radius: 999px; padding: 6px 14px 6px 12px;
+}
+.status .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--live); box-shadow: 0 0 10px var(--live); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+h1 {
+  font: 700 clamp(40px, 7.4vw, 84px)/1.0 var(--display); letter-spacing: -.035em; margin: 26px 0 22px; max-width: 900px;
+  background: linear-gradient(180deg, #fff 30%, #8f9099); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+h1 .glow { background: linear-gradient(90deg, #ffd08a, var(--ember) 60%, #ff8a3d); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 22px rgba(255, 181, 71, .35)); }
+.lede { font-size: 19px; line-height: 1.6; color: var(--muted); max-width: 640px; margin: 0 0 34px; }
+.lede b { color: var(--text); font-weight: 500; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; padding: 13px 20px; border-radius: 4px;
+  font: 600 13px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  border: 1px solid var(--hair-2); color: var(--text); background: var(--panel); transition: border-color .2s, box-shadow .2s;
+}
+.btn:hover { border-color: var(--ember); box-shadow: 0 0 0 1px var(--ember-faint), 0 0 24px -6px var(--ember-glow); text-shadow: none; }
+.btn.primary { background: var(--ember); border-color: var(--ember); color: #000; box-shadow: 0 0 30px -6px var(--ember-glow); }
+.btn.primary:hover { box-shadow: 0 0 44px -4px var(--ember-glow); }
+.btn .arrow { transition: transform .2s; }
+.btn:hover .arrow { transform: translateX(3px); }
+
+/* the wave */
+.wave { position: relative; height: 150px; margin: 30px -16px 0; overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent); }
+.wave svg { position: absolute; left: 0; top: 0; height: 100%; width: 200%; animation: drift 9s linear infinite; }
+.wave .w2 { animation-duration: 14s; opacity: .45; }
+.wave .w3 { animation-duration: 21s; animation-direction: reverse; opacity: .2; }
+@keyframes drift { to { transform: translateX(-50%); } }
+.wave path { fill: none; vector-effect: non-scaling-stroke; }
+.wave .axis { position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--hair-2); }
+
+/* firmware alarm */
+.alarm {
+  position: relative; display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start;
+  border: 1px solid rgba(255, 90, 54, .45); background: linear-gradient(90deg, rgba(255, 90, 54, .09), rgba(255, 90, 54, .02));
+  border-radius: 4px; padding: 16px 20px; margin-top: 30px; color: #ffc6b6; box-shadow: 0 0 40px -18px rgba(255, 90, 54, .6);
+}
+.alarm .label { justify-self: start; font: 600 11.5px var(--mono); letter-spacing: .14em; color: var(--alarm); border: 1px solid rgba(255, 90, 54, .5); padding: 3px 8px; border-radius: 2px; white-space: nowrap; margin-top: 2px; }
+.alarm strong { color: #fff; font-weight: 500; }
+
+/* HUD frame for screenshots */
+.hud { position: relative; margin: 0; }
+.hud .bar {
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font: 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim);
+  padding: 0 2px 10px;
+}
+.hud .bar .on { color: var(--live); }
+.hud .frame {
+  position: relative; border: 1px solid var(--hair-2); background: #000; padding: 6px;
+  box-shadow: 0 0 0 1px rgba(255, 181, 71, .05), 0 50px 140px -50px rgba(255, 181, 71, .35);
+}
+.hud .frame img { display: block; width: 100%; height: auto; }
+.hud .frame::before, .hud .frame::after, .hud .frame i::before, .hud .frame i::after {
+  content: ""; position: absolute; width: 18px; height: 18px; border-color: var(--ember); border-style: solid; filter: drop-shadow(0 0 4px var(--ember-glow));
+}
+.hud .frame::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+.hud .frame::after { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+.hud .frame i::before { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+.hud .frame i::after { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+figcaption { color: var(--dim); font: 12px var(--mono); letter-spacing: .04em; margin-top: 12px; }
+
+/* sections */
+section { padding: 96px 0 0; }
+.eyebrow { font: 600 12px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--ember); margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+.eyebrow::after { content: ""; flex: 0 0 60px; height: 1px; background: linear-gradient(90deg, var(--ember), transparent); }
+h2 { font: 700 clamp(28px, 4vw, 42px)/1.1 var(--display); letter-spacing: -.025em; margin: 0 0 36px; }
+h3 { font: 600 17px/1.3 var(--display); margin: 0 0 8px; letter-spacing: -.01em; }
+
+/* features */
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--hair); border-left: 1px solid var(--hair); }
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+.cell { position: relative; padding: 28px 26px 30px; border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair); background: rgba(5, 5, 6, .6); transition: background .25s; }
+.cell:hover { background: radial-gradient(circle at 0 0, var(--ember-faint), transparent 70%), var(--panel); }
+a.cell { display: block; color: var(--text); }
+a.cell:hover { text-shadow: none; }
+.cell .n { font: 11px var(--mono); letter-spacing: .14em; color: var(--dim); display: flex; justify-content: space-between; margin-bottom: 26px; }
+.cell .n i { font-style: normal; opacity: .45; transform: translateY(-2px); transition: opacity .2s, transform .2s; }
+.cell:hover .n { color: var(--ember); }
+.cell:hover .n i { opacity: 1; transform: none; }
+.cell:hover h3 { color: #fff; }
+#tiled, #widget, #keys { scroll-margin-top: 32px; }
+.cell p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+.split { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: start; }
+.split > *, ol.steps > li { min-width: 0; }
+.install-split { grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); }
+.widget-split { grid-template-columns: 372px 1fr; gap: 72px; align-items: center; }
+.widget-shot { max-width: 372px; width: 100%; justify-self: center; }
+@media (max-width: 880px) { .split, .widget-split { grid-template-columns: 1fr; gap: 36px; } }
+
+/* keys */
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+td, th { text-align: left; padding: 12px 4px; border-bottom: 1px solid var(--hair); vertical-align: middle; }
+th { font: 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); font-weight: 400; }
+td:last-child { color: var(--muted); }
+kbd {
+  display: inline-block; font-size: 12px; line-height: 1; color: var(--text); padding: 6px 8px 5px; margin: 2px 1px;
+  background: linear-gradient(180deg, #121215, #070708); border: 1px solid var(--hair-2); border-bottom-color: rgba(255,255,255,.04);
+  border-radius: 4px; box-shadow: 0 2px 0 #000, inset 0 1px 0 rgba(255, 255, 255, .06); white-space: nowrap;
+}
+.note { color: var(--muted); font-size: 14.5px; margin-top: 18px; }
+
+/* terminal */
+.term { border: 1px solid var(--hair-2); border-radius: 6px; background: var(--panel); overflow: hidden; box-shadow: 0 40px 100px -50px rgba(255, 181, 71, .25); }
+.term .top { display: flex; align-items: center; gap: 8px; padding: 11px 14px; border-bottom: 1px solid var(--hair); background: var(--panel-2); }
+.term .top span { width: 10px; height: 10px; border-radius: 50%; background: #1d1d21; }
+.term .top b { flex: 1; text-align: center; font: 11.5px var(--mono); letter-spacing: .1em; color: var(--dim); font-weight: 400; }
+.term .copy { font: 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); background: none; border: 1px solid var(--hair-2); border-radius: 3px; padding: 4px 9px; cursor: pointer; }
+.term .copy:hover { color: var(--ember); border-color: var(--ember); }
+pre { margin: 0; padding: 20px 22px; overflow-x: auto; font-size: 13.5px; line-height: 1.85; }
+pre .p { color: var(--ember); user-select: none; }
+pre .c { color: var(--dim); }
+
+/* get started */
+ol.steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+ol.steps > li { position: relative; counter-increment: step; padding: 0 0 34px 58px; }
+ol.steps > li::before {
+  content: counter(step, decimal-leading-zero); position: absolute; left: 0; top: 0;
+  width: 38px; height: 38px; display: grid; place-items: center;
+  font: 600 13px var(--mono); color: var(--ember); border: 1px solid rgba(255, 181, 71, .5); border-radius: 50%;
+  background: var(--void); box-shadow: 0 0 18px -4px var(--ember-glow); z-index: 1;
+}
+ol.steps > li:not(:last-child)::after { content: ""; position: absolute; left: 19px; top: 40px; bottom: 2px; width: 1px; background: linear-gradient(var(--hair-2), transparent); }
+ol.steps h3 { padding-top: 8px; margin-bottom: 10px; }
+ol.steps p { margin: 0; color: var(--muted); font-size: 15px; }
+ol.steps p b { color: var(--text); font-weight: 500; }
+ol.steps .term { margin: 4px 0 0; }
+ol.steps .sub { margin-top: 12px; font-size: 14px; }
+.alarm.small { margin-top: 26px; padding: 12px 16px; font-size: 14px; }
+.more-title { margin: 40px 0 16px; font: 600 12px var(--mono); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.more { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--hair); border-left: 1px solid var(--hair); }
+@media (max-width: 900px) { .more { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .more { grid-template-columns: 1fr; } }
+.more a { display: block; padding: 18px 18px 20px; border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair); color: var(--muted); font-size: 13.5px; transition: background .25s; }
+.more a:hover { background: radial-gradient(circle at 0 0, var(--ember-faint), transparent 70%), var(--panel); text-shadow: none; }
+.more a .n { display: block; font: 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-bottom: 14px; }
+.more a:hover .n { color: var(--ember); }
+.more a b { display: block; color: var(--text); font-weight: 500; font-size: 15px; margin-bottom: 4px; }
+.more a b::after { content: " ↗"; color: var(--ember); font-family: var(--mono); font-size: 12px; }
+
+ul.spec { list-style: none; margin: 0; padding: 0; }
+ul.spec li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--hair); color: var(--muted); font-size: 15px; }
+ul.spec li::before { content: "▸"; color: var(--ember); font-family: var(--mono); }
+ul.spec b { color: var(--text); font-weight: 500; }
+
+/* tested */
+.readout { border: 1px solid var(--hair-2); background: var(--panel); }
+.readout div { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding: 14px 18px; border-bottom: 1px solid var(--hair); font-size: 15px; }
+.readout div:last-child { border-bottom: 0; }
+.readout .k { font: 11px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); padding-top: 3px; }
+.ok { color: var(--live); font-family: var(--mono); font-size: 12px; letter-spacing: .1em; }
+.pending { color: var(--muted); }
+.pending b { color: var(--text); font-weight: 500; }
+
+/* disclaimer */
+.legal { display: grid; grid-template-columns: repeat(2, 1fr); border-top: 1px solid var(--hair); }
+@media (max-width: 760px) { .legal { grid-template-columns: 1fr; } }
+.legal div { padding: 22px 24px 22px 0; border-bottom: 1px solid var(--hair); color: var(--muted); font-size: 14.5px; }
+.legal div:nth-child(odd) { padding-right: 32px; }
+.legal b { display: block; color: var(--text); font-weight: 500; margin-bottom: 4px; }
+
+footer { margin-top: 110px; border-top: 1px solid var(--hair); padding: 34px 0 56px; color: var(--dim); font: 12.5px/1.8 var(--mono); }
+footer .row { display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+footer a { color: var(--muted); }
+footer a:hover { color: var(--ember); }
+
+@media (max-width: 640px) {
+  nav .links { display: none; }
+  .hero { padding-top: 40px; }
+  .lede { font-size: 17px; }
+  section { padding-top: 72px; }
+  .alarm { grid-template-columns: 1fr; gap: 10px; }
+  .readout div { grid-template-columns: 1fr; gap: 2px; }
+  .wave { height: 110px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wave svg, .status .dot { animation: none; }
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+<div class="backdrop" aria-hidden="true"></div>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 16c3-11 9-11 12 0s9 11 12 0" fill="none" stroke="#ffb547" stroke-width="3" stroke-linecap="round"/></svg>
+      Stompgate
+    </a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#keys">Keys</a>
+      <a href="#install">Get started</a>
+      <a href="#tested">Tested</a>
+      <a href="https://github.com/roninjanitor/stompgate">GitHub ↗</a>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <span class="status"><span class="dot"></span>v0.2.0 · Unofficial · Not affiliated with Neural DSP or Omarchy</span>
+    <h1>Your Quad Cortex, <span class="glow">on&nbsp;Omarchy.</span></h1>
+    <p class="lede">Stompgate runs Neural DSP's <b>Cortex Control</b> editor on Omarchy Linux through Proton, with the Quad Cortex connected over USB. <b>No Windows VM.</b> It tiles like a native window and adds keyboard shortcuts, a bar widget and MIDI controls.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Get started <span class="arrow">→</span></a>
+      <a class="btn" href="https://github.com/roninjanitor/stompgate">Source on GitHub</a>
+    </div>
+    <div class="alarm" role="note">
+      <span class="label">⚠ FIRMWARE</span>
+      <div><strong>Never update the Quad Cortex's firmware through Cortex Control on Linux.</strong> If an update fails partway, the unit can be left unusable. Update firmware over Wi‑Fi on the Quad Cortex itself, and back up your Quad Cortex before editing presets.</div>
+    </div>
+    <div class="wave" aria-hidden="true">
+      <div class="axis"></div>
+      <svg class="w1" preserveAspectRatio="none"><path stroke="#ffb547" stroke-width="2" style="filter: drop-shadow(0 0 6px rgba(255,181,71,.8))"/></svg>
+      <svg class="w2" preserveAspectRatio="none"><path stroke="#ffb547" stroke-width="1"/></svg>
+      <svg class="w3" preserveAspectRatio="none"><path stroke="#ffffff" stroke-width="1"/></svg>
+    </div>
+  </header>
+
+  <figure class="hud">
+    <div class="bar"><span>Cortex Control 4.1.0</span><span><span class="on">● Connected</span> · Quad Cortex mini · USB</span></div>
+    <div class="frame"><i></i><img src="img/editor.png" width="1723" height="1244" alt="Cortex Control showing a preset grid, connected to a Quad Cortex mini, running on Omarchy"></div>
+  </figure>
+
+  <section id="features">
+    <div class="eyebrow">01 / Features</div>
+    <h2>Built for Omarchy.</h2>
+    <div class="grid">
+      <a class="cell" href="#tiled"><span class="n">01 — TILING <i>↓</i></span><h3>Tiles at any size</h3><p>Runs inside gamescope, so the whole editor scales into any tile without being cut off. Let your DAW take the big tile.</p></a>
+      <a class="cell" href="#keys"><span class="n">02 — KEYS <i>↓</i></span><h3>Keyboard shortcuts</h3><p>Show or hide the editor, toggle the tuner, step through scenes and modes, and press footswitches, with feedback on Omarchy's on-screen display.</p></a>
+      <a class="cell" href="#widget"><span class="n">03 — BAR <i>↓</i></span><h3>Bar widget</h3><p>Appears while the editor is open. Shows the QC's status and gives quick controls for modes, scenes, footswitches, the tuner and audio levels.</p></a>
+      <a class="cell" href="https://github.com/roninjanitor/stompgate#how-modes-scenes-and-footswitches-behave"><span class="n">04 — MIDI <i>↗</i></span><h3>MIDI over USB</h3><p>Scene, tuner, mode, tap tempo and footswitch control, sent straight to the QC from the keyboard, the widget or a terminal.</p></a>
+      <a class="cell" href="https://github.com/roninjanitor/stompgate#daily-use"><span class="n">05 — MENU <i>↗</i></span><h3>Menu and launcher</h3><p>Cortex Control in the app launcher, and Stompgate entries under Trigger and Learn in the Omarchy menu.</p></a>
+      <a class="cell" href="https://github.com/roninjanitor/stompgate#troubleshooting"><span class="n">06 — DOCTOR <i>↗</i></span><h3>A doctor</h3><p><code>stompgate-doctor</code> checks the whole setup, from Proton and the udev rule to the QC's USB, MIDI and audio, and says what to fix.</p></a>
+    </div>
+    <figure class="hud" id="tiled" style="margin-top:64px">
+      <div class="bar"><span>Hyprland · tiled</span><span>REAPER 2/3 · Cortex Control 1/3</span></div>
+      <div class="frame"><i></i><img src="img/tiled.png" width="2000" height="816" alt="Omarchy desktop with REAPER in the large tile and Cortex Control fully visible in a smaller tile"></div>
+      <figcaption>Your DAW takes the big tile. The editor is letterboxed into the rest, with nothing cut off.</figcaption>
+    </figure>
+  </section>
+
+  <section id="keys">
+    <div class="split widget-split">
+      <figure class="hud widget-shot" id="widget">
+        <div class="bar"><span>Bar widget</span><span class="on">● Live</span></div>
+        <div class="frame"><i></i><img src="img/widget.png" width="372" height="540" alt="Stompgate bar widget popup with mode, scene, footswitch, tuner and audio controls"></div>
+        <figcaption>Click the sine wave in the bar. It's only there while the editor runs.</figcaption>
+      </figure>
+      <div>
+        <div class="eyebrow">02 / Keys</div>
+        <h2>Hands on the keyboard.</h2>
+        <table>
+          <tr><th>Keys</th><th>Action</th></tr>
+          <tr><td><kbd>Super</kbd><kbd>Shift</kbd><kbd>Q</kbd></td><td>Show or hide Cortex Control</td></tr>
+          <tr><td><kbd>Super</kbd><kbd>Alt</kbd><kbd>Q</kbd></td><td>Tuner on/off</td></tr>
+          <tr><td><kbd>Super</kbd><kbd>Alt</kbd><kbd>N</kbd> <kbd>P</kbd></td><td>Next / previous scene</td></tr>
+          <tr><td><kbd>Super</kbd><kbd>Alt</kbd><kbd>M</kbd></td><td>Preset → Scene → Stomp</td></tr>
+          <tr><td><kbd>Super</kbd><kbd>Alt</kbd><kbd>B</kbd></td><td>Tap tempo</td></tr>
+          <tr><td><kbd>Super</kbd><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>1–8</kbd></td><td>Footswitch 1–8</td></tr>
+        </table>
+        <p class="note">Rebind them in <code>~/.config/hypr/stompgate.lua</code>. Omarchy's keybindings menu (<kbd>Super</kbd><kbd>K</kbd>) always shows the current ones.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="eyebrow">03 / Get started</div>
+    <h2>Up and running in four steps.</h2>
+    <div class="split install-split">
+      <ol class="steps">
+        <li>
+          <h3>Install the package</h3>
+          <div class="term">
+            <div class="top"><span></span><span></span><span></span><b>~</b><button class="copy" type="button" data-copy="install-cmds">Copy</button></div>
+<pre id="install-cmds"><span class="c"># recommended: lets the editor tile at any size</span>
+<span class="p">$ </span>sudo pacman -S gamescope
+
+<span class="p">$ </span>git clone https://github.com/roninjanitor/stompgate
+<span class="p">$ </span>cd stompgate
+<span class="p">$ </span>makepkg -si</pre>
+          </div>
+          <p class="sub">Installs the <code>stompgate</code> commands, the launcher entry and a udev rule that matches only the Quad Cortex's USB IDs. It asks for your password once.</p>
+        </li>
+        <li>
+          <h3>Run setup</h3>
+          <div class="term">
+            <div class="top"><span></span><span></span><span></span><b>~</b><button class="copy" type="button" data-copy="setup-cmds">Copy</button></div>
+<pre id="setup-cmds"><span class="p">$ </span>stompgate-setup        <span class="c"># no sudo</span>
+<span class="p">$ </span>omarchy restart shell  <span class="c"># loads the bar widget</span></pre>
+          </div>
+          <p class="sub">Setup installs Cortex Control for you; there's nothing to download or run by hand. It fetches the official <b>Cortex Control 4.1.0</b> installer straight from Neural DSP, checks it by hash, and lets you pick Neural DSP's setup wizard, which shows their license, or a silent install if you've already accepted it. It also downloads a pinned GE-Proton, keeps everything in your home folder, and adds the window rule, shortcuts, bar widget and menu entries. Takes a few minutes.</p>
+          <p class="sub">Why 4.1.0 and not the latest? Each release is tested under Proton before Stompgate supports it, so setup refuses any other version. Already downloaded 4.1.0? Setup uses the copy in <code>~/Downloads</code>.</p>
+        </li>
+        <li>
+          <h3>Connect the Quad Cortex</h3>
+          <p>Plug it in with a USB <b>data</b> cable and turn it on. For the scene, tuner, mode and footswitch controls, on the QC go to <b>Settings → Device → MIDI</b>, turn on <b>MIDI over USB</b>, and set the channel to <b>1</b> or <b>Omni</b>.</p>
+        </li>
+        <li>
+          <h3>Launch</h3>
+          <p>Press <kbd>Super</kbd><kbd>Shift</kbd><kbd>Q</kbd>, or find <b>Cortex Control</b> in the app launcher. The sine wave appears in your bar. If anything looks off, run <code>stompgate-doctor</code>; it checks every piece and says what to fix.</p>
+        </li>
+      </ol>
+      <div>
+        <h3 style="margin-bottom:14px">Requirements</h3>
+        <ul class="spec">
+          <li><span><b>Omarchy</b> (Arch + Hyprland)</span></li>
+          <li><span>A GPU with a <b>Vulkan</b> driver</span></li>
+          <li><span>A <b>Quad Cortex</b> or <b>Quad Cortex mini</b> on a USB data cable</span></li>
+          <li><span>An <b>internet connection</b> during setup</span></li>
+          <li><span>About <b>2 GB</b> of disk space</span></li>
+        </ul>
+        <p class="note">Your system Wine is never touched. <a href="https://github.com/roninjanitor/stompgate#what-this-changes-on-your-system">Everything Stompgate changes</a> is listed, and <code>stompgate-uninstall</code> removes it.</p>
+        <div class="alarm small" role="note">
+          <span class="label">⚠ FIRMWARE</span>
+          <div>Update firmware over Wi‑Fi on the QC itself, never through Cortex Control.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="more-title">Go further</h3>
+    <div class="more">
+      <a href="https://github.com/roninjanitor/stompgate#using-the-quad-cortex-as-an-audio-interface"><span class="n">Audio</span><b>Record into REAPER</b><span>Use the QC as your audio interface.</span></a>
+      <a href="https://github.com/roninjanitor/stompgate#keyboard-shortcuts"><span class="n">Keys</span><b>Change shortcuts</b><span>Rebind every key to taste.</span></a>
+      <a href="https://github.com/roninjanitor/stompgate#tiling-and-window-size"><span class="n">Tiling</span><b>Window modes</b><span>gamescope or a plain window.</span></a>
+      <a href="https://github.com/roninjanitor/stompgate#troubleshooting"><span class="n">Help</span><b>Troubleshooting</b><span>Common problems and fixes.</span></a>
+      <a href="https://github.com/roninjanitor/stompgate#uninstall"><span class="n">Remove</span><b>Uninstall</b><span>Take it all back out.</span></a>
+    </div>
+  </section>
+
+  <section id="tested">
+    <div class="eyebrow">04 / Tested</div>
+    <h2>Known good.</h2>
+    <div class="split">
+      <div class="readout">
+        <div><span class="k">Device</span><span>Quad Cortex mini <span class="ok">· OK</span></span></div>
+        <div><span class="k">Software</span><span>Cortex Control 4.1.0 · GE-Proton11-9 · umu-launcher 1.4.4</span></div>
+        <div><span class="k">System</span><span>Omarchy · Hyprland 0.56.2</span></div>
+        <div><span class="k">Graphics</span><span>NVIDIA RTX 3060 Ti</span></div>
+      </div>
+      <div class="pending">
+        <p style="margin-top:0"><b>Not tested yet:</b> the full-size Quad Cortex, AMD and Intel graphics, loading presets over MIDI, and REAPER through JACK.</p>
+        <p class="note">Tried it on different hardware? <a href="https://github.com/roninjanitor/stompgate/blob/main/COMPATIBILITY.md">Send a compatibility report →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="disclaimer">
+    <div class="eyebrow">05 / Disclaimer</div>
+    <h2>The fine print.</h2>
+    <div class="legal">
+      <div><b>Not Neural DSP's.</b>Stompgate isn't affiliated with, endorsed by or supported by Neural DSP Technologies, which doesn't support running Cortex Control on Linux. Please don't contact their support about this project.</div>
+      <div><b>Not part of Omarchy.</b>It plugs into Omarchy's public extension points and isn't affiliated with or endorsed by Omarchy or its maintainers.</div>
+      <div><b>No warranty.</b>Provided as is, under the MIT license. You use it at your own risk; the authors aren't responsible for damaged devices, failed firmware updates, lost presets or voided warranties.</div>
+      <div><b>No Neural DSP software included.</b>Setup installs your own copy of the official installer, unmodified, and you accept Neural DSP's license as usual.</div>
+      <div><b>Trademarks.</b>Neural DSP, Quad Cortex, Quad Cortex mini and Cortex Control are trademarks of Neural DSP Technologies Oy, used here only to say what this project works with. Screenshots show Cortex Control running under Stompgate.</div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="row">
+      <span>Builds on work by <a href="https://github.com/0xteo/cortex-control-linux">0xteo</a>, <a href="https://github.com/taylortek91/cortex-control-wine">taylortek91</a> and <a href="https://github.com/Mordeton/cortex-control-linux">Mordeton</a> · <a href="https://github.com/roninjanitor/stompgate/blob/main/THIRD-PARTY-NOTICES.md">Notices</a></span>
+      <span>MIT · <a href="https://github.com/roninjanitor/stompgate">github.com/roninjanitor/stompgate</a></span>
+    </div>
+  </footer>
+</div>
+<script>
+// Draw the hero waves: each SVG is twice the viewport wide and holds a whole
+// number of cycles, so sliding it left by half loops without a seam.
+(function () {
+  var waves = [[6, 0.38], [10, 0.26], [4, 0.44]];
+  document.querySelectorAll(".wave svg").forEach(function (svg, i) {
+    var cycles = waves[i][0], amp = waves[i][1], W = 2000, H = 100, d = "M0 " + H / 2;
+    var steps = cycles * 48;
+    for (var s = 1; s <= steps; s++) {
+      var x = (W / steps) * s;
+      d += " L" + x.toFixed(1) + " " + (H / 2 - Math.sin((x / W) * cycles * 2 * Math.PI) * amp * H).toFixed(2);
+    }
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    svg.querySelector("path").setAttribute("d", d);
+  });
+
+  // Copy only the commands, without prompts or comments.
+  document.querySelectorAll("[data-copy]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = document.getElementById(btn.dataset.copy).innerText.split("\n")
+        .filter(function (l) { return l.indexOf("$ ") === 0; })
+        .map(function (l) { return l.slice(2).replace(/\s+#.*$/, ""); })
+        .join("\n");
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = "Copied";
+        setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
