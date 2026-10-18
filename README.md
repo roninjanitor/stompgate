@@ -64,7 +64,7 @@ Omarchy:
 ## Install
 
 ```sh
-git clone <this repo> ~/projects/stompgate
+git clone https://github.com/roninjanitor/stompgate.git ~/projects/stompgate
 cd ~/projects/stompgate
 makepkg -si                 # builds and installs the package (asks for sudo)
 stompgate-setup        # per-user setup, run as yourself (no sudo)

@@ -5,8 +5,7 @@ Neural DSP or Omarchy.*
 
 An [Omarchy](https://omarchy.org) bar widget for people who run Neural DSP's
 Cortex Control editor on Linux with
-**[stompgate](https://github.com/OWNER/stompgate)**.
-<!-- Replace OWNER with the GitHub account when publishing. -->
+**[stompgate](https://github.com/roninjanitor/stompgate)**.
 
 > [!IMPORTANT]
 > **Unofficial.** Not affiliated with, endorsed by or supported by Neural DSP
@@ -53,7 +52,7 @@ highlights follow the last command sent from your computer.
 ## Install on its own
 
 ```sh
-omarchy plugin add https://github.com/OWNER/stompgate-widget --enable
+omarchy plugin add https://github.com/roninjanitor/stompgate-widget --enable
 ```
 
 ## Settings

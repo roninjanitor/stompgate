@@ -11,6 +11,7 @@ pkgver=0.2.0
 pkgrel=1
 pkgdesc='Run Neural DSP Cortex Control (Quad Cortex editor) on Omarchy via umu-launcher and GE-Proton'
 arch=('any')
+url='https://github.com/roninjanitor/stompgate'
 license=('MIT')
 depends=(
   'alsa-utils'
