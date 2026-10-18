@@ -6,7 +6,7 @@
 
 pkgname=cortex-control-omarchy
 pkgver=0.1.0
-pkgrel=14
+pkgrel=15
 pkgdesc='Run Neural DSP Cortex Control (Quad Cortex editor) on Omarchy via umu-launcher and GE-Proton'
 arch=('any')
 license=('MIT')

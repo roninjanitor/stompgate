@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "Nick Lozano",
   "license": "MIT",
-  "description": "Neural DSP Quad Cortex in the Omarchy bar while Cortex Control runs: show or hide the editor, switch scenes, toggle the tuner and set the QC's audio.",
+  "description": "Unofficial, not affiliated with Neural DSP. Neural DSP Quad Cortex in the Omarchy bar while Cortex Control runs: show or hide the editor, switch scenes, toggle the tuner and set the QC's audio.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Quad Cortex",
-    "description": "Shows whether the Quad Cortex is connected, opens Cortex Control and runs cortex-control-doctor.",
+    "description": "Unofficial. Needs the cortex-control-omarchy package. Shows or hides Cortex Control and switches the Quad Cortex's scenes, modes, tuner and audio.",
     "category": "Audio",
     "allowMultiple": false,
     "defaultSection": "right",

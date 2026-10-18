@@ -18,7 +18,7 @@ Panel {
   ipcTarget: "cortex-control-omarchy.quad-cortex"
   manageIpc: false
 
-  readonly property string glyph: "󰐰" // nf-md-pulse, like the Neural DSP logo
+  readonly property string glyph: "󰥛" // nf-md-sine_wave: a generic audio-signal symbol
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color urgent: bar ? bar.urgent : Color.urgent
   readonly property color dim: Qt.darker(foreground, 1.55)

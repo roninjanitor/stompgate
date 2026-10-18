@@ -128,7 +128,7 @@ mode.
 
 ### The bar widget
 
-A pulse icon (the Neural DSP mark) appears in the bar while Cortex Control is
+A sine-wave icon appears in the bar while Cortex Control is
 open. It's dim when the QC isn't connected. Left-click opens the popup:
 
 - **Header:** the device and its status, plus a **Hide / Show** button. Hidden,
