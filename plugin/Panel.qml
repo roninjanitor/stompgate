@@ -39,9 +39,11 @@ Panel {
   property var checks: []
   property bool doctorRan: false
   property var audio: ({ present: false })
+  property var keys: [] // current shortcuts, read from Hyprland via cortex-control --keys
   property var midi: ({ present: false })
   readonly property int lastScene: midi.scene === undefined ? -1 : midi.scene
   readonly property bool tunerOpen: midi.tunerOpen === true
+  readonly property int lastMode: midi.mode === undefined ? -1 : midi.mode
   property string pendingVolumeTarget: ""
   property int pendingVolume: 0
 
@@ -66,6 +68,24 @@ Panel {
 
   function refreshStatus() { if (!statusProcess.running) statusProcess.running = true }
   function refreshDoctor() { if (!doctorProcess.running) doctorProcess.running = true }
+  // The shortcut whose description contains `fragment`, e.g. "Super + Alt + Q".
+  function keyFor(fragment) {
+    for (var i = 0; i < keys.length; i++) {
+      if (String(keys[i].action).indexOf(fragment) !== -1) return keys[i].keys
+    }
+    return ""
+  }
+
+  function withKey(text, fragment) {
+    var k = keyFor(fragment)
+    return k ? text + " · " + k : text
+  }
+
+  function openKeys() {
+    run("cortex-control --keys --menu")
+    close()
+  }
+
   function refreshDevice() {
     if (!audioProcess.running) audioProcess.running = true
     if (!midiProcess.running) midiProcess.running = true
@@ -92,6 +112,11 @@ Panel {
     qcCommand("scene " + "ABCDEFGH".charAt(index))
   }
 
+  function setMode(index) {
+    midi = Object.assign({}, midi, { mode: index })
+    qcCommand("mode " + ["preset", "scene", "stomp"][index])
+  }
+
   function toggleTuner() {
     midi = Object.assign({}, midi, { tunerOpen: !tunerOpen })
     qcCommand("tuner toggle")
@@ -116,6 +141,7 @@ Panel {
     refreshStatus()
     refreshDoctor()
     refreshDevice()
+    if (!keysProcess.running) keysProcess.running = true
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
@@ -158,6 +184,15 @@ Panel {
     stdout: StdioCollector { id: midiOut; waitForEnd: true }
     onExited: {
       try { qc.midi = JSON.parse(String(midiOut.text || "{}")) } catch (e) { qc.midi = { present: false } }
+    }
+  }
+
+  Process {
+    id: keysProcess
+    command: ["cortex-control", "--keys", "--json"]
+    stdout: StdioCollector { id: keysOut; waitForEnd: true }
+    onExited: {
+      try { qc.keys = JSON.parse(String(keysOut.text || "[]")) } catch (e) { qc.keys = [] }
     }
   }
 
@@ -214,6 +249,8 @@ Panel {
         var n = parseInt(t, 10)
         if (n >= 1 && n <= 8 && qc.connected && qc.midi.present) qc.recallScene(n - 1)
         else if ((t === "t" || t === "T") && qc.connected && qc.midi.present) qc.toggleTuner()
+        else if ((t === "m" || t === "M") && qc.connected && qc.midi.present) qc.setMode((qc.lastMode + 1) % 3)
+        else if (t === "k" || t === "K") qc.openKeys()
         else if (t === "d" || t === "D") { qc.run("omarchy-launch-floating-terminal-with-presentation cortex-control-doctor"); qc.close() }
       }
 
@@ -273,7 +310,7 @@ Panel {
 
             Button {
               text: qc.editorLabel
-              tooltipText: qc.editorLabel === "Hide" ? "Hide Cortex Control; it keeps running" : "Cortex Control"
+              tooltipText: qc.withKey(qc.editorLabel === "Hide" ? "Hide Cortex Control; it keeps running" : "Show Cortex Control", "show or hide")
               foreground: qc.foreground
               fontFamily: qc.fontFamily
               bordered: true
@@ -300,9 +337,31 @@ Panel {
             spacing: Style.space(8)
 
             PanelSectionHeader {
-              text: "SCENES"
+              text: "MODE & SCENES"
               foreground: qc.foreground
               fontFamily: qc.fontFamily
+            }
+
+            RowLayout {
+              visible: qc.midi.present === true
+              width: parent.width
+              spacing: Style.space(6)
+
+              Repeater {
+                model: ["Preset", "Scene", "Stomp"]
+                delegate: Button {
+                  required property string modelData
+                  required property int index
+                  Layout.fillWidth: true
+                  text: modelData
+                  selected: qc.lastMode === index
+                  tooltipText: qc.withKey("Mode slot " + (index + 1) + ": " + modelData + " unless you reordered modes on the QC. Next mode", "next mode")
+                  foreground: qc.foreground
+                  fontFamily: qc.fontFamily
+                  bordered: true
+                  onClicked: qc.setMode(index)
+                }
+              }
             }
 
             Text {
@@ -342,10 +401,53 @@ Panel {
                     Layout.fillWidth: true
                     text: qc.sceneLabel(scene)
                     selected: qc.lastScene === scene
+                    tooltipText: qc.withKey("Scene " + (qc.isMini ? (scene < 4 ? "I·" : "II·") : "") + qc.sceneLabel(scene) + ". Next scene", "next scene")
                     foreground: qc.foreground
                     fontFamily: qc.fontFamily
                     bordered: true
                     onClicked: qc.recallScene(scene)
+                  }
+                }
+              }
+            }
+
+            PanelSectionHeader {
+              visible: qc.midi.present === true
+              text: "FOOTSWITCHES"
+              foreground: qc.foreground
+              fontFamily: qc.fontFamily
+            }
+
+            Repeater {
+              // Same layout as scenes: pages I and II on the mini.
+              model: qc.midi.present ? 2 : 0
+              delegate: RowLayout {
+                id: switchRow
+                required property int index
+                width: parent.width
+                spacing: Style.space(6)
+
+                Text {
+                  visible: qc.isMini
+                  text: switchRow.index === 0 ? "I" : "II"
+                  color: qc.dim
+                  font.family: qc.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  Layout.preferredWidth: Style.space(18)
+                }
+
+                Repeater {
+                  model: 4
+                  delegate: Button {
+                    required property int index
+                    readonly property int footswitch: switchRow.index * 4 + index + 1
+                    Layout.fillWidth: true
+                    text: qc.sceneLabel(footswitch - 1)
+                    tooltipText: qc.withKey("Footswitch " + (qc.isMini ? (footswitch <= 4 ? "I·" : "II·") : "") + qc.sceneLabel(footswitch - 1) + ": acts like the QC's own switch in the current mode", "footswitch " + footswitch)
+                    foreground: qc.foreground
+                    fontFamily: qc.fontFamily
+                    bordered: true
+                    onClicked: qc.qcCommand("footswitch " + footswitch)
                   }
                 }
               }
@@ -360,7 +462,7 @@ Panel {
                 Layout.fillWidth: true
                 text: qc.tunerOpen ? "Tuner · on" : "Tuner"
                 selected: qc.tunerOpen
-                tooltipText: "The QC doesn't report its tuner, so this follows the last press here or on Super+Alt+Q"
+                tooltipText: qc.withKey("The QC doesn't report its tuner, so this follows the last press. Tuner", "tuner")
                 foreground: qc.foreground
                 fontFamily: qc.fontFamily
                 bordered: true
@@ -370,6 +472,7 @@ Panel {
               Button {
                 Layout.fillWidth: true
                 text: "Tap tempo"
+                tooltipText: qc.withKey("Tap tempo", "tap tempo")
                 foreground: qc.foreground
                 fontFamily: qc.fontFamily
                 bordered: true
@@ -431,30 +534,25 @@ Panel {
 
           RowLayout {
             width: parent.width
-            spacing: Style.space(8)
+            spacing: Style.space(14)
 
-            Text {
-              textFormat: Text.PlainText
-              Layout.fillWidth: true
-              text: !qc.doctorRan ? "Checking setup…"
-                : qc.problems.length === 0 ? "✓ Setup OK · doctor" : "Run doctor for details"
-              color: doctorLink.containsMouse ? qc.foreground : qc.dim
-              font.family: qc.fontFamily
-              font.pixelSize: Style.font.caption
-              elide: Text.ElideRight
-
-              MouseArea {
-                id: doctorLink
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: { qc.run("omarchy-launch-floating-terminal-with-presentation cortex-control-doctor"); qc.close() }
-              }
+            FooterLink {
+              text: !qc.doctorRan ? "Checking…" : qc.problems.length === 0 ? "✓ Setup OK" : "Doctor"
+              tooltip: "Full cortex-control-doctor report (d)"
+              onActivated: { qc.run("omarchy-launch-floating-terminal-with-presentation cortex-control-doctor"); qc.close() }
             }
 
+            FooterLink {
+              text: "Keys"
+              tooltip: "Keyboard shortcuts, and where to change them (k)"
+              onActivated: qc.openKeys()
+            }
+
+            Item { Layout.fillWidth: true }
+
             Text {
               textFormat: Text.PlainText
-              text: "Firmware: update over Wi‑Fi only"
+              text: "Firmware: Wi‑Fi only"
               color: qc.dim
               font.family: qc.fontFamily
               font.pixelSize: Style.font.caption
@@ -462,6 +560,32 @@ Panel {
           }
         }
       }
+    }
+  }
+
+  component FooterLink: Text {
+    id: link
+    property string tooltip: ""
+    signal activated()
+
+    textFormat: Text.PlainText
+    color: linkArea.containsMouse ? qc.foreground : qc.dim
+    font.family: qc.fontFamily
+    font.pixelSize: Style.font.caption
+    font.underline: linkArea.containsMouse
+
+    MouseArea {
+      id: linkArea
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: link.activated()
+    }
+
+    PanelToolTip {
+      visible: linkArea.containsMouse && link.tooltip !== ""
+      text: link.tooltip
+      fontFamily: qc.fontFamily
     }
   }
 

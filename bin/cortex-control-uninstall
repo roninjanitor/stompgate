@@ -56,7 +56,7 @@ safe_rm_dir() {
 exports="$PREFIX/drive_c/users/steamuser/Documents"
 echo "This removes:"
 echo "  - the Hyprland window rule ($HYPR_RULE_FILE and its line in hyprland.lua)"
-echo "  - the Cortex Control icon, launcher log and Quad Cortex bar widget"
+echo "  - the Cortex Control icon, launcher log, Quad Cortex bar widget and Omarchy menu entries"
 if (( ! keep_prefix )); then
   echo "  - the Wine prefix: $PREFIX"
   echo "  - $PROTON_VERSION: $DATA_DIR/proton"
@@ -77,7 +77,10 @@ if [[ -f $conf ]] && grep -qF "$HYPR_REQUIRE_LINE" "$conf"; then
   grep -vF -e "$HYPR_REQUIRE_LINE" -e "-- Cortex Control window rule (cortex-control-setup" "$conf" >"$conf.tmp"
   mv "$conf.tmp" "$conf"
 fi
-rm -f "$HYPR_RULE_FILE"
+if [[ -f $HYPR_RULE_FILE ]]; then
+  cp "$HYPR_RULE_FILE" "$HYPR_RULE_FILE.bak.$(date +%s)" # in case you customised the keys
+fi
+rm -f "$HYPR_RULE_FILE" "$HYPR_RULE_FILE.new" "$STATE_DIR/hypr-rule.sha256"
 if command -v hyprctl >/dev/null && hyprctl version >/dev/null 2>&1; then
   hyprctl reload >/dev/null || true
 fi
@@ -86,6 +89,11 @@ if [[ -d $PLUGIN_DIR ]]; then
   omarchy plugin disable "$PLUGIN_ID" >/dev/null 2>&1 || true
   rm -rf -- "$PLUGIN_DIR"
   omarchy-shell -q shell rescanPlugins
+fi
+
+if [[ -f $MENU_FILE ]] && grep -qF "$MENU_BEGIN" "$MENU_FILE"; then
+  cp "$MENU_FILE" "$MENU_FILE.bak.$(date +%s)"
+  remove_menu_block
 fi
 
 rm -f "$ICON_DIR"/*/apps/cortex-control.png

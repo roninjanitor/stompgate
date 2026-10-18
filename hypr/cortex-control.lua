@@ -1,4 +1,11 @@
 -- Neural DSP Cortex Control under Proton/XWayland (installed by cortex-control-setup).
+--
+-- Change any key below to suit you, then save; Hyprland reloads by itself.
+-- cortex-control-setup keeps your edits: a newer default is written next to
+-- this file as cortex-control.lua.new instead. List the current keys with
+-- Super + K (search "Quad") or: cortex-control --keys
+-- Keep the "Quad Cortex:" / "Cortex Control:" descriptions so the keys menu
+-- and the bar widget can find your bindings.
 -- The app locks its window to about 1.4:1 and scales its UI to fit, so a tile of
 -- any other shape crops it. Float it instead, and keep that ratio when resizing.
 o.window({ class = "^steam_app_cortexcontrol$" }, { float = true, center = true, size = { 1600, 1140 }, keep_aspect_ratio = true })
@@ -10,3 +17,10 @@ o.bind("SUPER + ALT + Q", "Quad Cortex: tuner on/off", "cortex-control-qc --osd 
 o.bind("SUPER + ALT + N", "Quad Cortex: next scene", "cortex-control-qc --osd scene next")
 o.bind("SUPER + ALT + P", "Quad Cortex: previous scene", "cortex-control-qc --osd scene prev")
 o.bind("SUPER + ALT + B", "Quad Cortex: tap tempo", "cortex-control-qc --osd tap")
+o.bind("SUPER + ALT + M", "Quad Cortex: next mode (preset/scene/stomp)", "cortex-control-qc --osd mode next")
+
+-- Footswitch presses, 1-8 by keycode like Omarchy's workspace keys. What a press
+-- does follows the QC's mode (stomp toggle, preset in bank, scene).
+for n = 1, 8 do
+  o.bind("SUPER + CTRL + ALT + code:" .. tostring(n + 9), "Quad Cortex: footswitch " .. n, "cortex-control-qc --osd footswitch " .. n)
+end

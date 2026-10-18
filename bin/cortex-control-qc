@@ -29,6 +29,12 @@ MIDI (needs Settings > Device > MIDI > MIDI OVER USB on the QC):
   midi-status                    JSON: whether the QC's MIDI port is available
   scene A-H|next|prev            Recall a scene (CC#43). On a QC mini, E-H are page II A-D.
   tuner open|close|toggle        Open or close the tuner (CC#45)
+  footswitch 1-8                 Press a footswitch (CC#35-42). What it does depends on the
+                                 mode: toggle stomps, pick a preset in the bank, or a scene.
+                                 On a QC mini, 1-4 are A-D on page I and 5-8 on page II.
+  mode preset|scene|stomp|next|prev
+                                 Switch mode (CC#47). The QC addresses mode slots 1-3,
+                                 which are Preset, Scene and Stomp unless reordered.
   gig-view open|close            Open or close Gig View (CC#46)
   tap                            Tap tempo (CC#44)
   preset <bank><slot> [setlist]  Load a preset, e.g. "preset 38C" (CC#0, CC#32, PC).
@@ -189,14 +195,15 @@ midi_port() {
 }
 
 midi_status() {
-  local port scene tuner
+  local port scene tuner mode
   port=$(midi_port)
   scene=$(state_get scene)
+  mode=$(state_get mode)
   tuner=$(state_get tunerOpen)
   jq -n -c --arg port "$port" --arg channel "${CORTEX_CONTROL_MIDI_CHANNEL:-1}" \
-    --arg scene "${scene:--1}" --arg tuner "${tuner:-false}" \
+    --arg scene "${scene:--1}" --arg tuner "${tuner:-false}" --arg mode "${mode:--1}" \
     '{present: ($port != ""), port: $port, channel: ($channel | tonumber),
-      scene: ($scene | tonumber), tunerOpen: ($tuner == "true")}'
+      scene: ($scene | tonumber), mode: ($mode | tonumber), tunerOpen: ($tuner == "true")}'
 }
 
 # Send one or more MIDI messages, given as space-separated hex bytes.
@@ -240,6 +247,31 @@ scene() {
   midi_send "$(cc 43 "$index")"
   state_set scene "$index"
   say "Scene $(scene_name "$index")"
+}
+
+footswitch() {
+  local n="${1:-}"
+  [[ $n =~ ^[1-8]$ ]] || die "footswitch must be 1-8"
+  midi_send "$(cc $((34 + n)) 127)"
+  say "Footswitch $(scene_name $((n - 1)))"
+}
+
+MODE_NAMES=(Preset Scene Stomp)
+
+mode() {
+  local arg="${1,,}" index last
+  last=$(state_get mode)
+  case "$arg" in
+    preset) index=0 ;;
+    scene) index=1 ;;
+    stomp) index=2 ;;
+    next) index=$(( (${last:--1} + 1) % 3 )) ;;
+    prev) index=$(( (${last:-0} + 2) % 3 )) ;;
+    *) die "mode must be preset, scene, stomp, next or prev" ;;
+  esac
+  midi_send "$(cc 47 "$index")"
+  state_set mode "$index"
+  say "Mode · ${MODE_NAMES[index]}"
 }
 
 tuner() {
@@ -290,6 +322,8 @@ case "$command" in
   midi-status) midi_status ;;
   scene) scene "${1:-}" ;;
   tuner) tuner "${1:-}" ;;
+  mode) mode "${1:-}" ;;
+  footswitch) footswitch "${1:-}" ;;
   gig-view) open_close 46 "${1:-}" ;;
   tap) midi_send "$(cc 44 127)"; say "Tap tempo" ;;
   preset) preset "${1:-}" "${2:-}" ;;

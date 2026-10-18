@@ -190,6 +190,23 @@ else
   add WARN "Hyprland rule" "missing; the window may tile and get cropped (run cortex-control-setup)"
 fi
 
+launcher="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/cortex-control"
+if [[ -x $launcher ]] && command -v omarchy-menu-keybindings >/dev/null; then
+  bound=$("$launcher" --keys --json 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
+  if (( bound > 0 )); then
+    add OK "Keyboard shortcuts" "$bound bound (cortex-control --keys)"
+  else
+    add WARN "Keyboard shortcuts" "none bound; run cortex-control-setup"
+  fi
+  [[ -f $HYPR_RULE_FILE.new ]] && add WARN "Keyboard shortcuts" "a newer default is waiting in $HYPR_RULE_FILE.new"
+fi
+
+if [[ -f $MENU_FILE ]] && grep -qF "$MENU_BEGIN" "$MENU_FILE"; then
+  add OK "Omarchy menu" "Trigger › Quad Cortex and Learn › Quad Cortex"
+else
+  add OK "Omarchy menu" "no entries (optional; cortex-control-setup adds them)"
+fi
+
 if [[ ! -d $PLUGIN_DIR ]]; then
   add OK "Bar widget" "not installed (optional)"
 elif [[ -d $SHARE_DIR/plugin ]] && ! diff -rq "$SHARE_DIR/plugin" "$PLUGIN_DIR" >/dev/null 2>&1; then

@@ -31,6 +31,9 @@ HYPR_RULE_FILE="$HYPR_DIR/cortex-control.lua"
 HYPR_REQUIRE_LINE='require("default.hypr.require_optional").module("hypr.cortex-control")'
 PLUGIN_ID="cortex-control-omarchy.quad-cortex"
 PLUGIN_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/plugins/$PLUGIN_ID"
+MENU_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/omarchy/extensions/omarchy-menu.jsonc"
+MENU_BEGIN="// >>> cortex-control-omarchy"
+MENU_END="// <<< cortex-control-omarchy"
 ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
 
 # Static files: the checkout when run from it, otherwise the installed package.
@@ -43,6 +46,13 @@ if [[ -z ${SHARE_DIR:-} ]]; then
   fi
   unset _cc_lib_dir
 fi
+
+# Remove our marked block from Omarchy's menu extensions file, if present.
+remove_menu_block() {
+  [[ -f $MENU_FILE ]] && grep -qF "$MENU_BEGIN" "$MENU_FILE" || return 0
+  awk -v b="$MENU_BEGIN" -v e="$MENU_END" 'index($0, b) { skip = 1 } !skip { print } index($0, e) { skip = 0 }' \
+    "$MENU_FILE" >"$MENU_FILE.tmp" && mv "$MENU_FILE.tmp" "$MENU_FILE"
+}
 
 info() { printf '\033[1;36m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$*" >&2; }

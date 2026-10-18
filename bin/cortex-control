@@ -12,20 +12,61 @@ else
   source /usr/share/cortex-control-omarchy/lib/cortex-control-omarchy.sh
 fi
 
+# Our shortcuts as Hyprland currently has them, so edits to the keys show up
+# here, in the bar widget and in Omarchy's keybindings menu alike.
+current_keys() {
+  omarchy-menu-keybindings --print 2>/dev/null |
+    awk -F ' *→ *' '
+      BEGIN { name["SUPER"] = "Super"; name["ALT"] = "Alt"; name["CTRL"] = "Ctrl"; name["SHIFT"] = "Shift" }
+      $2 ~ /^(Quad Cortex|Cortex Control): / {
+        # "SUPER ALT + B" -> "Super + Alt + B"
+        n = split($1, parts, /[ +]+/); keys = ""
+        for (i = 1; i <= n; i++) if (parts[i] != "") keys = keys (keys == "" ? "" : " + ") (parts[i] in name ? name[parts[i]] : parts[i])
+        print keys "\t" $2
+      }'
+}
+
+show_keys() {
+  local fmt="${1:-text}" rows
+  rows=$(current_keys)
+  case "$fmt" in
+    --json)
+      jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t") | {keys: .[0], action: .[1]})' <<<"$rows"
+      ;;
+    --menu)
+      local change="Change these keys…" choice
+      choice=$( { awk -F '\t' '{ printf "%-28s %s\n", $1, $2 }' <<<"$rows"; echo "$change"; } |
+        omarchy-menu-select "Quad Cortex keys" -- --width 720 --height 460) || exit 0
+      [[ $choice == "$change" ]] && exec omarchy-launch-editor "$HYPR_RULE_FILE"
+      ;;
+    *)
+      if [[ -z $rows ]]; then
+        echo "No Cortex Control shortcuts are bound. Run cortex-control-setup to add them."
+      else
+        awk -F '\t' '{ printf "  %-28s %s\n", $1, $2 }' <<<"$rows"
+        echo
+        echo "Change them in $HYPR_RULE_FILE (Hyprland reloads on save)."
+      fi
+      ;;
+  esac
+}
+
 mode="show"
 case "${1:-}" in
+  --keys) show_keys "${2:-}"; exit 0 ;;
   --show) mode="show"; shift ;;
   --hide) mode="hide"; shift ;;
   --toggle) mode="toggle"; shift ;;
   -h | --help)
     cat <<'EOF'
-Usage: cortex-control [--show | --hide | --toggle]
+Usage: cortex-control [--show | --hide | --toggle | --keys [--json | --menu]]
 
 Starts Cortex Control, or shows and focuses its window if it is already open.
 
   --show    Bring the window to the current workspace and focus it (default)
   --hide    Move the window to a hidden workspace. The app keeps running.
   --toggle  Hide the window if it's on the current workspace, otherwise show it
+  --keys    List the keyboard shortcuts (--menu: Omarchy menu, --json: for scripts)
 
 Related commands: cortex-control-setup, cortex-control-doctor, cortex-control-qc, cortex-control-uninstall
 EOF
