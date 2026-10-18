@@ -1,12 +1,14 @@
 # Maintainer: Nick Lozano
 #
+# Unofficial; not affiliated with Neural DSP or Omarchy.
+#
 # Runs Neural DSP Cortex Control on Omarchy with umu-launcher and a pinned
 # GE-Proton in a per-user prefix. Neural DSP's installer and app are not
 # included or modified; cortex-control-setup installs the user's own copy.
 
 pkgname=cortex-control-omarchy
-pkgver=0.1.0
-pkgrel=15
+pkgver=0.2.0
+pkgrel=1
 pkgdesc='Run Neural DSP Cortex Control (Quad Cortex editor) on Omarchy via umu-launcher and GE-Proton'
 arch=('any')
 license=('MIT')
@@ -54,4 +56,6 @@ package() {
   install -Dm644 desktop/cortex-control.desktop "$pkgdir/usr/share/applications/cortex-control.desktop"
   install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 THIRD-PARTY-NOTICES.md "$pkgdir/usr/share/licenses/$pkgname/THIRD-PARTY-NOTICES.md"
+  install -Dm644 CHANGELOG.md "$pkgdir/usr/share/doc/$pkgname/CHANGELOG.md"
 }

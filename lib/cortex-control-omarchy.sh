@@ -66,6 +66,18 @@ if [[ -z ${SHARE_DIR:-} ]]; then
   unset _cc_lib_dir
 fi
 
+# The widget is these two files; the repo's plugin/ folder also holds a README
+# and LICENSE for publishing it on its own, which aren't installed.
+PLUGIN_FILES=(manifest.json Panel.qml)
+
+# True when the installed widget matches the given source folder.
+plugin_current() {
+  local src="$1" f
+  for f in "${PLUGIN_FILES[@]}"; do
+    cmp -s "$src/$f" "$PLUGIN_DIR/$f" || return 1
+  done
+}
+
 # Remove our marked block from Omarchy's menu extensions file, if present.
 remove_menu_block() {
   [[ -f $MENU_FILE ]] && grep -qF "$MENU_BEGIN" "$MENU_FILE" || return 0

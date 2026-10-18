@@ -99,6 +99,8 @@ fi
 rm -f "$ICON_DIR"/*/apps/cortex-control.png
 gtk-update-icon-cache -f -t "$ICON_DIR" >/dev/null 2>&1 || true
 rm -rf -- "$STATE_DIR"
+rm -f "$CONFIG_FILE"
+rmdir "$(dirname "$CONFIG_FILE")" 2>/dev/null || true
 
 if (( ! keep_prefix )); then
   safe_rm_dir "$PREFIX" "prefix"

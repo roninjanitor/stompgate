@@ -17,14 +17,31 @@ Omarchy:
 > [!CAUTION]
 > **Never update the Quad Cortex's firmware through Cortex Control on Linux.**
 > If an update fails partway, the unit can be left unusable. Update firmware
-> **over Wi‑Fi on the Quad Cortex itself**.
->
-> **Back up your Quad Cortex before editing presets.** This is an unofficial
-> project. It isn't affiliated with or supported by Neural DSP, and you use it
-> at your own risk (see [LICENSE](LICENSE)).
+> **over Wi‑Fi on the Quad Cortex itself**. **Back up your Quad Cortex before
+> editing presets.**
 
-This repository doesn't include, redistribute or modify Neural DSP's software.
-Setup installs your own copy of the official installer and checks it by hash.
+## Disclaimer
+
+**This is an unofficial community project.**
+
+- **Not Neural DSP's:** it isn't affiliated with, endorsed by or supported by
+  **Neural DSP Technologies**. Neural DSP doesn't support running Cortex Control
+  on Linux and may decline to help with problems caused by it. Don't contact
+  their support about this project.
+- **Not part of Omarchy:** it isn't affiliated with or endorsed by **Omarchy**
+  or its maintainers. It plugs into Omarchy's public extension points.
+- **No warranty:** it's provided **as is**, without warranty of any kind (see
+  [LICENSE](LICENSE)). You use it **at your own risk**. The authors aren't
+  responsible for damaged or unusable ("bricked") devices, failed firmware
+  updates, lost presets or other data, voided warranties, or any other damage.
+  Neural DSP's hardware warranty excludes damage from not following the
+  owner's manual, and using unsupported software may put it at risk.
+- **No Neural DSP software:** this repository doesn't include, redistribute or
+  modify any. Setup installs **your own copy** of the official installer, checks
+  it by hash, and you accept **Neural DSP's license** as usual.
+- **Trademarks:** Neural DSP, Quad Cortex, Quad Cortex mini and Cortex Control
+  are trademarks of Neural DSP Technologies Oy. They're used here only to say
+  what this project works with.
 
 ## Requirements
 
@@ -78,6 +95,51 @@ can be run again safely.
 1. Go to **Settings → Device → MIDI**.
 2. Turn on **MIDI OVER USB**.
 3. Set **MIDI CHANNEL** to **1**, or to **OMNI**.
+
+## What this changes on your system
+
+Read this before you install.
+
+**Needs sudo (asked for by `makepkg -si`, through pacman):**
+- **Installs the package**, which owns these files:
+  - `/usr/bin/cortex-control*`
+  - `/usr/share/cortex-control-omarchy/`
+  - `/usr/share/applications/cortex-control.desktop`
+  - `/usr/lib/udev/rules.d/70-cortex-control-omarchy.rules`
+  - the README and license under `/usr/share/doc` and `/usr/share/licenses`
+- **Installs dependencies** from the Arch repos, including `umu-launcher`.
+- **Installs the udev rule and reloads udev.** It gives the logged-in user
+  access to the Quad Cortex's HID node (`152a:880a`, `152a:892f`) and **nothing
+  else**.
+
+**Your home folder (`cortex-control-setup`, no sudo):**
+
+| Path | What |
+|---|---|
+| `~/.local/share/cortex-control-omarchy/` | Pinned GE-Proton and the Wine prefix with Cortex Control |
+| `~/.local/share/umu/` | umu-launcher's Steam runtime, shared with other umu apps |
+| `~/.local/state/cortex-control-omarchy/` | Launcher log, MIDI send log, last scene/mode/tuner state |
+| `~/.local/share/icons/hicolor/*/apps/cortex-control.png` | App icon, extracted from your installed copy |
+| `~/.config/hypr/cortex-control.lua` | Window rule and keyboard shortcuts |
+| `~/.config/hypr/hyprland.lua` | **One line added** to load the file above (backed up first) |
+| `~/.config/omarchy/plugins/cortex-control-omarchy.quad-cortex/` | Bar widget |
+| `~/.config/omarchy/extensions/omarchy-menu.jsonc` | A **marked block** of menu entries (backed up first; the rest isn't touched) |
+| `~/.config/cortex-control-omarchy/config` | Display mode, if you set one |
+
+**Downloads:**
+- **GE-Proton** from GitHub, checked against a pinned SHA-512.
+- **The Cortex Control installer** from `downloads.neuraldsp.com`, only if it
+  isn't already in `~/Downloads`. It's checked against a pinned SHA-256.
+- **umu's Steam runtime**, on first use.
+
+**Network use while running:** each launch, the launcher checks once whether
+`cloud.neuraldsp.com` is reachable, for the online indicator. Nothing else
+contacts the network. Nothing is collected or sent anywhere by this project.
+
+**Undo it all:** see [Uninstall](#uninstall). Everything above is removed or
+restored, with backups of the config files it edited. The one exception is
+umu's Steam runtime, which other umu apps (such as Omarchy's Battle.net) may
+share. Delete `~/.local/share/umu/` yourself if nothing else uses it.
 
 ## Daily use
 
@@ -271,7 +333,7 @@ Tested by hand in October 2026 on:
   801 px.
 - **MIDI:** scene, tuner, mode and footswitch control.
 
-**Not tested yet. Reports are welcome:**
+**Not tested yet.** Reports are welcome; see [COMPATIBILITY.md](COMPATIBILITY.md):
 - **Devices:** the **full-size Quad Cortex**. It's included in the udev rule
   and the controls, and Mordeton's project confirms it works under Proton.
 - **Graphics:** AMD and Intel.
@@ -315,7 +377,8 @@ authors:
   - the original Wine + DXVK approach,
   - the research into why hidapi couldn't see the QC (the cfgmgr32 shim),
   - the firmware warning,
-  - the advice to stay on XWayland.
+  - the advice to stay on XWayland,
+  - the note that the QC's "Broken pipe" errors are harmless.
 - **[taylortek91/cortex-control-wine](https://github.com/taylortek91/cortex-control-wine):**
   - the Arch packaging approach,
   - the udev rule matched to product IDs,
@@ -326,13 +389,24 @@ authors:
   - full-size QC testing on NVIDIA,
   - the design of the `doctor` diagnostics.
 
+Their MIT license notices, and what this project took from each, are in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
 Also: Neural DSP for Cortex Control and the published MIDI implementation;
 Valve, GloriousEggroll and the Open Wine Components team for Proton, GE-Proton
 and umu-launcher; the Wine and DXVK projects; and Omarchy for the shell,
 widgets and menu this hooks into.
 
+## Contributing
+
+Bug reports, compatibility reports and fixes are welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md), and [CHANGELOG.md](CHANGELOG.md) for what's
+changed.
+
 ## License
 
-The scripts, widget and configuration here are [MIT](LICENSE) licensed.
-Cortex Control, Quad Cortex and Neural DSP are trademarks of Neural DSP
-Technologies Oy, which isn't involved with this project.
+The scripts, widget and configuration here are [MIT](LICENSE) licensed, and
+they build on MIT-licensed work listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Cortex Control, Quad Cortex
+and Neural DSP are trademarks of Neural DSP Technologies Oy, which isn't
+involved with this project. Omarchy is not involved with it either.

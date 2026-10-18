@@ -247,7 +247,7 @@ install_plugin() {
   (( plugin )) || return 0
   command -v omarchy >/dev/null || return 0
   local src="$SHARE_DIR/plugin"
-  if [[ -d $PLUGIN_DIR ]] && diff -rq "$src" "$PLUGIN_DIR" >/dev/null 2>&1; then
+  if [[ -d $PLUGIN_DIR ]] && plugin_current "$src"; then
     info "The Quad Cortex bar widget is up to date"
     return
   fi

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "cortex-control-omarchy.quad-cortex",
   "name": "Quad Cortex",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Nick Lozano",
   "license": "MIT",
   "description": "Unofficial, not affiliated with Neural DSP. Neural DSP Quad Cortex in the Omarchy bar while Cortex Control runs: show or hide the editor, switch scenes, toggle the tuner and set the QC's audio.",

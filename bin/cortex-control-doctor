@@ -220,7 +220,7 @@ fi
 
 if [[ ! -d $PLUGIN_DIR ]]; then
   add OK "Bar widget" "not installed (optional)"
-elif [[ -d $SHARE_DIR/plugin ]] && ! diff -rq "$SHARE_DIR/plugin" "$PLUGIN_DIR" >/dev/null 2>&1; then
+elif [[ -d $SHARE_DIR/plugin ]] && ! plugin_current "$SHARE_DIR/plugin"; then
   add WARN "Bar widget" "older than the installed package; run cortex-control-setup to update it"
 else
   add OK "Bar widget" "$PLUGIN_ID"
