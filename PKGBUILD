@@ -6,7 +6,7 @@
 
 pkgname=cortex-control-omarchy
 pkgver=0.1.0
-pkgrel=12
+pkgrel=13
 pkgdesc='Run Neural DSP Cortex Control (Quad Cortex editor) on Omarchy via umu-launcher and GE-Proton'
 arch=('any')
 license=('MIT')
@@ -51,5 +51,6 @@ package() {
   install -Dm644 plugin/Panel.qml "$share/plugin/Panel.qml"
   install -Dm644 udev/70-cortex-control-omarchy.rules "$pkgdir/usr/lib/udev/rules.d/70-cortex-control-omarchy.rules"
   install -Dm644 desktop/cortex-control.desktop "$pkgdir/usr/share/applications/cortex-control.desktop"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

@@ -1,0 +1,307 @@
+# Cortex Control for Omarchy
+
+Run Neural DSP's **Cortex Control**, the Windows editor for the Quad Cortex, on
+[Omarchy](https://omarchy.org). It runs through Proton, and the Quad Cortex
+connects over USB, so you don't need a Windows VM. It also integrates with
+Omarchy:
+
+- **App launcher:** Cortex Control has its own entry, opened with Super + Space.
+- **Window rule:** a Hyprland rule keeps the editor floating at the right shape.
+- **Bar widget:** shows the QC's status and gives quick controls.
+- **Keyboard shortcuts:** show or hide the editor, toggle the tuner, and switch
+  scenes and modes, with feedback on Omarchy's on-screen display.
+- **Omarchy menu:** Quad Cortex entries under Trigger and Learn.
+- **Doctor:** `cortex-control-doctor` checks the whole setup.
+
+> [!CAUTION]
+> **Never update the Quad Cortex's firmware through Cortex Control on Linux.**
+> If an update fails partway, the unit can be left unusable. Update firmware
+> **over Wi‑Fi on the Quad Cortex itself**.
+>
+> **Back up your Quad Cortex before editing presets.** This is an unofficial
+> project. It isn't affiliated with or supported by Neural DSP, and you use it
+> at your own risk (see [LICENSE](LICENSE)).
+
+This repository doesn't include, redistribute or modify Neural DSP's software.
+Setup installs your own copy of the official installer and checks it by hash.
+
+## Requirements
+
+- **Omarchy** (Arch + Hyprland) with XWayland, which Omarchy enables by default.
+- **A GPU with a Vulkan driver.** The editor draws through DXVK. Omarchy
+  installs the NVIDIA, AMD or Intel Vulkan driver for your card.
+- **A Quad Cortex or Quad Cortex mini**, connected with a USB **data** cable.
+- **The official Cortex Control 4.1.0 Windows installer** from
+  [neuraldsp.com/downloads](https://neuraldsp.com/downloads). If it isn't in
+  `~/Downloads`, setup downloads it from Neural DSP.
+- **About 2 GB of disk space** for the pinned GE-Proton, umu's Steam runtime
+  and the Wine prefix.
+
+## Install
+
+```sh
+git clone <this repo> ~/projects/cortex-control-omarchy
+cd ~/projects/cortex-control-omarchy
+makepkg -si                 # builds and installs the package (asks for sudo)
+cortex-control-setup        # per-user setup, run as yourself (no sudo)
+omarchy restart shell       # loads the bar widget
+```
+
+**The package** installs the system parts:
+- the `cortex-control*` commands,
+- the menu entry,
+- a udev rule that lets you, the logged-in user, reach the QC's USB control
+  interface. It matches **only** `152a:880a` (Quad Cortex) and `152a:892f`
+  (Quad Cortex mini).
+
+It depends on `umu-launcher` and doesn't install or replace the system Wine.
+
+**`cortex-control-setup`** does everything else, in your home folder. Each step
+can be run again safely.
+1. Downloads **GE-Proton11-9** and checks it against a pinned SHA-512.
+2. Creates a dedicated Wine prefix in `~/.local/share/cortex-control-omarchy/`.
+3. Checks the installer against the known SHA-256 for 4.1.0, then installs
+   Cortex Control. You choose Neural DSP's setup wizard (shows the license) or a
+   silent install (only if you've already accepted the license).
+4. Extracts the app icon from your installed copy.
+5. Adds the Hyprland window rule and keyboard shortcuts, the bar widget and the
+   Omarchy menu entries. Skip any of these with `--no-hypr`, `--no-plugin` or
+   `--no-menu`.
+
+**On the Quad Cortex**, for the scene, tuner, mode and footswitch controls:
+1. Go to **Settings → Device → MIDI**.
+2. Turn on **MIDI OVER USB**.
+3. Set **MIDI CHANNEL** to **1**, or to **OMNI**.
+
+## Daily use
+
+Start **Cortex Control** from the app launcher (Super + Space), or press
+**Super + Shift + Q**. When the QC is plugged in and on, the editor connects
+within a few seconds.
+
+### Keyboard shortcuts
+
+| Keys | Action |
+|---|---|
+| **Super + Shift + Q** | Show or hide Cortex Control (starts it if closed) |
+| **Super + Alt + Q** | Tuner on/off |
+| **Super + Alt + N / P** | Next / previous scene |
+| **Super + Alt + M** | Next mode: Preset → Scene → Stomp |
+| **Super + Alt + B** | Tap tempo |
+| **Super + Ctrl + Alt + 1–8** | Press footswitch 1–8 (on a QC mini: A–D on page I, then page II) |
+
+**Seeing the current keys:**
+- **Super + K** (Omarchy's keybindings menu), then search "Quad".
+- The **Keys** link in the bar widget.
+- **Learn › Quad Cortex** in the Omarchy menu.
+- `cortex-control --keys` in a terminal.
+
+**Changing them:** edit `~/.config/hypr/cortex-control.lua`. Hyprland reloads
+when you save, and every list above follows your changes. Keep the
+"Quad Cortex:" / "Cortex Control:" descriptions so those lists can find your
+bindings. Re-running setup keeps your edited file and writes any newer default
+beside it as `cortex-control.lua.new`.
+
+### The bar widget
+
+A pulse icon (the Neural DSP mark) appears in the bar while Cortex Control is
+open. It's dim when the QC isn't connected. Left-click opens the popup:
+
+- **Header:** the device and its status, plus a **Hide / Show** button. Hidden,
+  the editor keeps running and stays connected to the QC.
+- **Mode & scenes:** Preset · Scene · Stomp, and scenes in two rows (I and II
+  on the mini).
+- **Footswitches:** presses the QC's switches. What a press does follows the
+  current mode.
+- **Tuner** and **Tap tempo**.
+- **Audio:** the **Pro Audio** switch, plus output and input volume sliders.
+  Right-click a slider to mute.
+- **Footer:** setup status (click for the full doctor report), **Keys**, and
+  the firmware reminder.
+
+**Other ways to use it:**
+- **Middle-click** the icon to show or hide the editor; **right-click** to
+  refresh.
+- **In the popup:** `1`–`8` for scenes, `m` for mode, `t` for the tuner, `k`
+  for keys, `d` for the doctor, Enter to show or hide.
+
+**Settings** (in the widget's settings):
+- **Show icon:** `running` (default), `connected` (also while the QC is on), or
+  `always`.
+- **Status check interval.**
+
+### From a terminal
+
+```sh
+cortex-control [--show | --hide | --toggle | --keys]
+cortex-control-qc scene A-H | next | prev
+cortex-control-qc tuner open | close | toggle
+cortex-control-qc mode preset | scene | stomp | next | prev
+cortex-control-qc footswitch 1-8
+cortex-control-qc preset 38C [setlist]     # bank 38, slot C; setlist 1 = My Presets
+cortex-control-qc tap | gig-view open|close
+cortex-control-qc pro-audio on|off | volume output|input 0-150 | mute output|input
+cortex-control-doctor [--json | --status]
+```
+
+### How modes, scenes and footswitches behave
+
+These use the incoming MIDI messages in Neural DSP's
+[Quad Cortex mini manual (4.1.1)](https://neuraldsp.com/manual/quad-cortex-mini):
+
+| Message | What it does |
+|---|---|
+| CC#43 | Scenes |
+| CC#45 | Tuner |
+| CC#46 | Gig View |
+| CC#44 | Tap tempo |
+| CC#47 | Mode slots |
+| CC#35–42 | Footswitches |
+| CC#0, CC#32 and Program Change | Presets |
+
+- **MIDI only goes one way.** The QC never reports its scene, mode or tuner
+  state. The highlights in the widget and the next/previous keys follow the
+  **last command sent from this computer**. If you change something on the QC
+  itself, they're out of step until your next press.
+- **Mode slots, not mode names.** CC#47 picks mode *slots* 1–3, which are Preset,
+  Scene and Stomp unless you reordered modes on the QC.
+- **Footswitches act like stepping on the switch.** In Stomp mode they toggle
+  effects, in Scene mode they recall scenes, and in Preset mode they load a
+  preset from the current bank. **Loading a different preset may discard
+  unsaved edits**, so save first.
+- **There's no next/previous preset.** MIDI has no message for it. Load a
+  specific preset with `cortex-control-qc preset 38C`.
+
+### Using the Quad Cortex as an audio interface
+
+You don't need Cortex Control for audio. The QC is a standard USB audio device,
+and PipeWire picks it up by itself.
+
+- **For a DAW**, turn on **Pro Audio**, from the widget or with
+  `cortex-control-qc pro-audio on`. The channels then appear as plain `AUX0–7`
+  instead of a 7.1 surround layout.
+- **REAPER** runs natively on Linux. Install it (for example
+  `omarchy pkg aur add reaper`) along with `pipewire-jack`. Then choose
+  **Preferences → Audio → Device → JACK**.
+
+## Troubleshooting
+
+Start with:
+
+```sh
+cortex-control-doctor
+```
+
+It checks the packages, XWayland, Vulkan, the pinned Proton, the prefix and app
+hash, QC access and whether anything else has the QC open. It also checks MIDI,
+audio, the shortcuts, the bar widget and the menu entries. It never starts Wine
+or talks to the QC.
+
+| Symptom | What to do |
+|---|---|
+| The Cortex Control window is cut off or has empty space | The app locks itself to about 1.4:1 and scales its UI, so it doesn't tile. The window rule floats it, and resizing keeps the ratio. |
+| The QC doesn't connect | Use a data cable and the logged-in desktop session. Run the doctor. Its "Quad Cortex … accessible" line must be OK. |
+| Repeated `hidraw_device_set_output_report … Broken pipe` in the Wine log | Known and harmless: the QC rejects one optional message, and everything else works. |
+| Scene, tuner or mode buttons do nothing | Turn on MIDI OVER USB on the QC and check its MIDI channel (1 or OMNI). `~/.local/state/cortex-control-omarchy/qc.log` shows what was sent. |
+| The bar widget didn't change after an update | Run `omarchy restart shell`. The shell keeps the old widget code until it restarts. |
+| You want a keybinding to open the widget's popup | Not possible: Omarchy lets only its own widgets register IPC. Use the shortcuts above, the menu or `cortex-control-qc`. |
+| The app says it's offline | The launcher checks `cloud.neuraldsp.com` and passes the result to a PowerShell shim. Check the doctor's "Neural DSP cloud" line. |
+| Something else | See the launcher log at `~/.local/state/cortex-control-omarchy/last-run.log`. For a verbose log, run `WINEDEBUG=err+all cortex-control` from a terminal. |
+
+**Don't switch Wine to its Wayland driver.** The launcher keeps Cortex Control
+on XWayland, because the Wayland driver gives it a Windows-style frame and
+breaks resizing.
+
+## Uninstall
+
+```sh
+cortex-control-uninstall            # prefix, Proton, window rule, keys, widget, menu entries
+cortex-control-uninstall --keep-prefix   # integration only; keep the app and settings
+sudo pacman -R cortex-control-omarchy
+```
+
+The uninstaller backs up `cortex-control.lua` and the menu file before
+changing them. Presets live on the Quad Cortex, not in the prefix.
+
+## What's tested
+
+Tested by hand in October 2026 on:
+
+| | |
+|---|---|
+| Device | **Quad Cortex mini** (`152a:892f`) |
+| Software | Cortex Control 4.1.0, umu-launcher 1.4.4, GE-Proton11-9 with DXVK 3.1.1 |
+| System | Omarchy, Hyprland 0.56.2, kernel 7.2.5 |
+| Graphics | NVIDIA RTX 3060 Ti, driver 610.57 |
+
+**Works:**
+- **App:** the editor draws; it connects over USB and shows the live preset
+  grid, CPU load and the account linked on the device; it fetches from Cortex
+  Cloud.
+- **Install:** a full uninstall followed by a reinstall from the package
+  completes.
+- **Window and shortcuts:** show and hide; the window rule; keyboard shortcuts
+  with OSD feedback.
+- **MIDI:** scene, tuner, mode and footswitch control.
+
+**Not tested yet. Reports are welcome:**
+- **Devices:** the **full-size Quad Cortex**. It's included in the udev rule
+  and the controls, and Mordeton's project confirms it works under Proton.
+- **Graphics:** AMD and Intel.
+- **Install:** the setup **wizard** path. Testing used the silent install.
+- **MIDI:** loading presets over MIDI, and Gig View.
+- **Audio:** REAPER through JACK.
+- **Cloud:** signing in to a Neural DSP account from the editor itself. Here the
+  account was linked on the device.
+
+**What we found along the way:**
+- **0xteo's cfgmgr32 shim isn't needed.** Proton 11 finds the QC without it.
+- **The PowerShell connectivity shim is kept but unused here.** The app never
+  called PowerShell on this setup, and the shim is a fallback.
+
+## How it works
+
+- **Runtime:** [umu-launcher](https://github.com/Open-Wine-Components/umu-launcher)
+  runs Cortex Control with a pinned
+  [GE-Proton](https://github.com/GloriousEggroll/proton-ge-custom) in its own
+  prefix. This is the same approach Omarchy uses for Battle.net. Pinning means
+  Proton updates elsewhere can't change this setup.
+- **QC connection:** `PROTON_ENABLE_HIDRAW=0x152A/0x880A,0x152A/0x892F` lets the
+  app reach the QC's HID interface, which Proton otherwise hides. The udev rule
+  gives your user access to that device node and nothing else.
+- **Rendering:** DXVK (bundled with Proton) draws the JUCE/Direct2D UI. Without
+  it the window is black.
+- **MIDI and audio:** `cortex-control-qc` talks to the QC directly with `amidi`
+  and `pactl`, separately from Cortex Control. That's why the controls also
+  work while the editor is hidden.
+
+## Credits
+
+This project combines and builds on three earlier projects. Thank you to their
+authors:
+
+- **[0xteo/cortex-control-linux](https://github.com/0xteo/cortex-control-linux):**
+  - the original Wine + DXVK approach,
+  - the research into why hidapi couldn't see the QC (the cfgmgr32 shim),
+  - the firmware warning,
+  - the advice to stay on XWayland.
+- **[taylortek91/cortex-control-wine](https://github.com/taylortek91/cortex-control-wine):**
+  - the Arch packaging approach,
+  - the udev rule matched to product IDs,
+  - the `powershell.bat` connectivity shim,
+  - the note that the QC's "Broken pipe" errors are harmless.
+- **[Mordeton/cortex-control-linux](https://github.com/Mordeton/cortex-control-linux):**
+  - the Proton-based approach and enabling hidraw for the QC,
+  - full-size QC testing on NVIDIA,
+  - the design of the `doctor` diagnostics.
+
+Also: Neural DSP for Cortex Control and the published MIDI implementation;
+Valve, GloriousEggroll and the Open Wine Components team for Proton, GE-Proton
+and umu-launcher; the Wine and DXVK projects; and Omarchy for the shell,
+widgets and menu this hooks into.
+
+## License
+
+The scripts, widget and configuration here are [MIT](LICENSE) licensed.
+Cortex Control, Quad Cortex and Neural DSP are trademarks of Neural DSP
+Technologies Oy, which isn't involved with this project.
