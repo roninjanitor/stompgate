@@ -153,6 +153,18 @@ notify() {
   fi
 }
 
+# Omarchy's on-screen display, as the keybindings use it. A duration of 0 keeps
+# it up until osd_close or the next message replaces it.
+QC_GLYPH="󰥛" # nf-md-sine_wave
+osd() {
+  command -v omarchy-osd >/dev/null || return 0
+  omarchy-osd -i "$QC_GLYPH" -m "$1" -d "${2:-1200}" >/dev/null 2>&1 || true
+}
+osd_close() {
+  command -v omarchy-shell >/dev/null || return 0
+  omarchy-shell -q osd close >/dev/null 2>&1 || true
+}
+
 refuse_root() {
   (( EUID != 0 )) || die "run this as your normal user, not root."
 }

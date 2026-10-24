@@ -51,21 +51,80 @@ show_keys() {
   esac
 }
 
+# The X display Cortex Control draws on: gamescope's own nested one in
+# gamescope mode, XWayland's otherwise. umu-run's environment has it; the app's
+# own is remapped inside umu's container.
+app_display() {
+  local pid
+  for pid in $(pgrep -x umu-run); do
+    if tr '\0' ' ' <"/proc/$pid/cmdline" 2>/dev/null | grep -qF 'Cortex Control.exe'; then
+      tr '\0' '\n' <"/proc/$pid/environ" 2>/dev/null | sed -n 's/^DISPLAY=//p'
+      return
+    fi
+  done
+}
+
+# Close Cortex Control the way its window's close button would, so it can let
+# go of the QC cleanly. Only with --force, for an app that's stuck, does this
+# end the whole Wine session instead.
+quit_app() {
+  local force=0 timeout=15 window class display i
+  [[ ${1:-} == --force ]] && force=1
+  if ! app_running; then
+    [[ -t 1 ]] && echo "Cortex Control isn't running."
+    return 0
+  fi
+
+  if (( force )); then
+    WINEPREFIX="$PREFIX" "$PROTON_DIR/files/bin/wineserver" -k 2>/dev/null || true
+  else
+    window=$(hyprctl clients -j 2>/dev/null | jq -c "[.[] | $WINDOW_JQ][0] // empty")
+    class=$(jq -r '.class // empty' <<<"${window:-null}")
+    if [[ $class == "$WINDOW_CLASS" ]]; then
+      # A normal XWayland window: Hyprland sends it WM_DELETE_WINDOW, even
+      # while it's on the hidden workspace.
+      hyprctl dispatch "hl.dsp.window.close({ window = \"address:$(jq -r '.address' <<<"$window")\" })" >/dev/null
+    else
+      # Inside gamescope, Hyprland only sees gamescope, and closing that kills
+      # the app outright. Ask the app's window on gamescope's display instead.
+      display=$(app_display)
+      [[ -n $display ]] && python3 -I "$SHARE_DIR/lib/x11-close.py" "$display" "$WINDOW_CLASS" || true
+    fi
+  fi
+
+  for (( i = 0; i < timeout * 4; i++ )); do
+    if ! app_running; then
+      osd "Editor closed"
+      return 0
+    fi
+    sleep 0.25
+  done
+  if (( force )); then
+    notify "Cortex Control is still running after stompgate --quit --force. Check: pgrep -af 'Cortex Control'"
+  else
+    notify "Cortex Control didn't close. If it's stuck, stop it with: stompgate --quit --force"
+  fi
+  return 1
+}
+
 mode="show"
 case "${1:-}" in
   --keys) show_keys "${2:-}"; exit 0 ;;
+  --quit) refuse_root; quit_app "${2:-}"; exit ;;
   --show) mode="show"; shift ;;
   --hide) mode="hide"; shift ;;
   --toggle) mode="toggle"; shift ;;
   -h | --help)
     cat <<'EOF'
-Usage: stompgate [--show | --hide | --toggle | --keys [--json | --menu]]
+Usage: stompgate [--show | --hide | --toggle | --quit [--force] | --keys [--json | --menu]]
 
 Starts Cortex Control, or shows and focuses its window if it is already open.
 
   --show    Bring the window to the current workspace and focus it (default)
   --hide    Move the window to a hidden workspace. The app keeps running.
   --toggle  Hide the window if it's on the current workspace, otherwise show it
+  --quit    Close Cortex Control, as its close button would, even while hidden.
+            --force ends its whole Wine session; use it only if the app is stuck.
   --keys    List the keyboard shortcuts (--menu: Omarchy menu, --json: for scripts)
 
 Related commands: stompgate-setup, stompgate-doctor, stompgate-qc, stompgate-uninstall
@@ -75,6 +134,9 @@ EOF
 esac
 
 refuse_root
+
+STARTUP_TIMEOUT=180 # seconds
+STARTUP_OSD_MS=$(( STARTUP_TIMEOUT * 1000 ))
 
 if [[ ! -f $APP || ! -x $PROTON_DIR/proton ]]; then
   # From the app launcher there is no terminal, so open one for the setup.
@@ -104,8 +166,15 @@ if [[ -n $window ]]; then
   exit 0
 fi
 [[ $mode == "hide" ]] && exit 0
+# Started a moment ago and its window isn't up yet: say so rather than
+# starting a second copy on the same QC.
+starting_file="$STATE_DIR/starting"
+if starter=$(cat "$starting_file" 2>/dev/null) && kill -0 "$starter" 2>/dev/null; then
+  osd "Starting editor…" "$STARTUP_OSD_MS"
+  exit 0
+fi
 if app_running; then
-  notify "Cortex Control is already starting or closing. Try again in a few seconds."
+  notify "Cortex Control is still closing. Try again in a few seconds."
   exit 1
 fi
 
@@ -119,6 +188,34 @@ fi
 
 mkdir -p "$STATE_DIR"
 log="$STATE_DIR/last-run.log"
+
+# The window takes several seconds to appear, so show that something is
+# happening until it does, or say why it didn't. Runs alongside the launch;
+# this script's PID becomes the app's once it execs.
+watch_startup() {
+  local launcher=$1 i
+  set +e
+  echo "$BASHPID" >"$starting_file"
+  osd "Starting editor…" "$STARTUP_OSD_MS"
+  for (( i = 0; i < STARTUP_TIMEOUT * 2; i++ )); do
+    sleep 0.5
+    if hyprctl clients -j 2>/dev/null | jq -e "[.[] | $WINDOW_JQ] | length > 0" >/dev/null; then
+      osd_close
+      break
+    fi
+    if ! kill -0 "$launcher" 2>/dev/null; then
+      osd_close
+      notify "Cortex Control closed before its window appeared. See $log, or run stompgate-doctor."
+      break
+    fi
+  done
+  if (( i == STARTUP_TIMEOUT * 2 )); then
+    osd_close
+    notify "Cortex Control's window still isn't showing after $((STARTUP_TIMEOUT / 60)) minutes. Run stompgate-doctor."
+  fi
+  rm -f "$starting_file"
+}
+watch_startup $$ </dev/null >/dev/null 2>&1 &
 shim_dir="$SHARE_DIR/shims"
 
 cd "$APP_DIR"

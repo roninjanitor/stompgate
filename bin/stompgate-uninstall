@@ -41,7 +41,7 @@ while (( $# > 0 )); do
 done
 
 refuse_root
-app_running && die "Cortex Control is running. Close it first."
+app_running && die "Cortex Control is running. Quit it first: stompgate --quit"
 
 # Only delete directories that are really ours.
 safe_rm_dir() {

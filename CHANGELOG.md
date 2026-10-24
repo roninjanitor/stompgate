@@ -1,6 +1,21 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
+
+### Added
+- **Quit Cortex Control:** `stompgate --quit`, a **Quit** button (`q`) in the
+  bar widget and **Quit Cortex Control** in the Omarchy menu, so the editor can
+  be closed while it's hidden. It asks the editor to close as its close button
+  would. In gamescope mode that request goes to the app on gamescope's own X
+  display (closing the gamescope window would kill the app outright), through a
+  small Python/libX11 helper. Wine's `taskkill` isn't used: it also closes
+  Wine's hidden IME windows, after which Cortex Control ignores the request.
+  `stompgate --quit --force` ends the Wine session of an editor that's stuck.
+- **Startup feedback:** "Starting editor…" stays on Omarchy's
+  on-screen display until the window appears, and a notification says so if
+  the app exits first or never shows its window. Pressing the shortcut again
+  meanwhile repeats the message instead of reporting an error, and no longer
+  risks starting a second copy before the first one's process shows up.
 
 ### Fixed
 - **Editor invisible in gamescope mode:** with gamescope 3.16.31 or later on

@@ -7,7 +7,7 @@
 # included or modified; stompgate-setup installs the user's own copy.
 
 pkgname=stompgate
-pkgver=0.2.0
+pkgver=0.3.0
 pkgrel=1
 pkgdesc='Run Neural DSP Cortex Control (Quad Cortex editor) on Omarchy via umu-launcher and GE-Proton'
 arch=('any')
@@ -24,8 +24,10 @@ depends=(
   'jq'
   'libnotify'
   'libpulse'
+  'libx11'
   'lsof'
   'procps-ng'
+  'python'
   'systemd'
   'tar'
   'umu-launcher'
@@ -49,6 +51,7 @@ package() {
   cd "$startdir"
 
   install -Dm644 lib/stompgate.sh "$share/lib/stompgate.sh"
+  install -Dm755 lib/x11-close.py "$share/lib/x11-close.py"
   for cmd in bin/*; do
     install -Dm755 "$cmd" "$pkgdir/usr/bin/${cmd#bin/}"
   done

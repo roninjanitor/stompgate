@@ -7,7 +7,7 @@ import qs.Commons
 import qs.Ui
 
 // Quad Cortex bar widget. The icon shows while Cortex Control runs (by default);
-// the popup shows/hides the editor, recalls scenes, toggles the tuner and sets
+// the popup shows/hides or quits the editor, recalls scenes, toggles the tuner and sets
 // the QC's audio. Device state comes from the stompgate commands.
 // MIDI is one-way: the QC never reports its scene or tuner, so those buttons
 // highlight what was last sent, from here or a keybinding (stompgate-qc
@@ -104,6 +104,11 @@ Panel {
   function editorAction() {
     if (editorLabel === "Hide") run("stompgate --hide")
     else run("stompgate --show")
+    close()
+  }
+
+  function quitEditor() {
+    run("stompgate --quit")
     close()
   }
 
@@ -251,6 +256,7 @@ Panel {
         else if ((t === "t" || t === "T") && qc.connected && qc.midi.present) qc.toggleTuner()
         else if ((t === "m" || t === "M") && qc.connected && qc.midi.present) qc.setMode((qc.lastMode + 1) % 3)
         else if (t === "k" || t === "K") qc.openKeys()
+        else if ((t === "q" || t === "Q") && qc.status.appRunning) qc.quitEditor()
         else if (t === "d" || t === "D") { qc.run("omarchy-launch-floating-terminal-with-presentation stompgate-doctor"); qc.close() }
       }
 
@@ -316,6 +322,17 @@ Panel {
               bordered: true
               Layout.alignment: Qt.AlignVCenter
               onClicked: qc.editorAction()
+            }
+
+            Button {
+              visible: qc.status.appRunning === true
+              text: "Quit"
+              tooltipText: "Close Cortex Control (q)"
+              foreground: qc.foreground
+              fontFamily: qc.fontFamily
+              bordered: true
+              Layout.alignment: Qt.AlignVCenter
+              onClicked: qc.quitEditor()
             }
           }
 

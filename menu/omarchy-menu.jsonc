@@ -2,6 +2,7 @@
   "learn.stompgate": {"icon":"","label":"Stompgate","description":"Quad Cortex and Cortex Control keyboard shortcuts","when":"command -v stompgate >/dev/null","action":"stompgate --keys --menu"},
   "trigger.stompgate": {"icon":"󰥛","label":"Stompgate","description":"Quad Cortex: Cortex Control, tuner, modes, audio","when":"command -v stompgate >/dev/null"},
   "trigger.stompgate.editor": {"icon":"󰥛","label":"Show or hide Cortex Control","action":"stompgate --toggle"},
+  "trigger.stompgate.quit": {"icon":"󰅖","label":"Quit Cortex Control","when":"pgrep -f '[C]ortex Control\\.exe' >/dev/null","action":"stompgate --quit"},
   "trigger.stompgate.tuner": {"icon":"󰎇","label":"Tuner on/off","when":"stompgate-qc midi-status | jq -e .present >/dev/null","checked":"stompgate-qc midi-status | jq -e .tunerOpen >/dev/null","action":"stompgate-qc --osd tuner toggle"},
   "trigger.stompgate.mode": {"icon":"󰘮","label":"Mode","when":"stompgate-qc midi-status | jq -e .present >/dev/null"},
   "trigger.stompgate.mode.preset": {"icon":"󰥛","label":"Preset","checked":"stompgate-qc midi-status | jq -e '.mode == 0' >/dev/null","action":"stompgate-qc --osd mode preset"},

@@ -79,7 +79,7 @@ migrate_old_install() {
     if [[ -e $DATA_DIR ]]; then
       warn "Both $OLD_DATA_DIR and $DATA_DIR exist; leaving the old one alone. Delete it once you're sure you don't need it."
     else
-      app_running && die "Cortex Control is running. Close it first, then run stompgate-setup again."
+      app_running && die "Cortex Control is running. Quit it first (stompgate --quit), then run stompgate-setup again."
       mv "$OLD_DATA_DIR" "$DATA_DIR"
       # Proton links Wine's built-in programs into the prefix by absolute path,
       # and records its own location in config_info; point both at the new place.
@@ -179,7 +179,7 @@ create_prefix() {
     info "Wine prefix exists at $PREFIX"
     return
   fi
-  app_running && die "Cortex Control is running. Close it first."
+  app_running && die "Cortex Control is running. Quit it first: stompgate --quit"
   info "Creating the Wine prefix (the first run also downloads umu's Steam runtime)"
   mkdir -p "$PREFIX"
   # With no program to run, umu only creates the prefix and exits non-zero.
@@ -192,7 +192,7 @@ install_app() {
     info "Cortex Control is already installed"
     return
   fi
-  app_running && die "Cortex Control is running. Close it first."
+  app_running && die "Cortex Control is running. Quit it first: stompgate --quit"
   find_installer
 
   if [[ -z $mode ]]; then

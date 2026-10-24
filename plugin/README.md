@@ -26,6 +26,7 @@ A sine-wave icon appears in the bar while Cortex Control is open. It's dim
 when the Quad Cortex isn't connected. Click it for:
 
 - **Show / Hide** the editor. Hidden, it keeps running and stays connected.
+- **Quit** the editor, even while it's hidden (`q` in the popup).
 - **Mode:** Preset · Scene · Stomp.
 - **Scenes** and **footswitches**, two rows of four on the QC mini.
 - **Tuner** on/off and **Tap tempo**.

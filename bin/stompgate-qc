@@ -137,7 +137,6 @@ toggle_mute() {
 # --- Feedback and remembered state ------------------------------------------
 
 osd=0
-QC_GLYPH="󰥛"
 
 # Report to the terminal, or to the OSD when run from a keybinding.
 say() {

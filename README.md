@@ -147,8 +147,16 @@ share. Delete `~/.local/share/umu/` yourself if nothing else uses it.
 ## Daily use
 
 Start **Cortex Control** from the app launcher (Super + Space), or press
-**Super + Shift + Q**. When the QC is plugged in and on, the editor connects
-within a few seconds.
+**Super + Shift + Q**. Omarchy's on-screen display shows "Starting
+editor…" until the window appears, which takes several seconds. When the QC
+is plugged in and on, the editor connects within a few seconds more.
+
+**Quitting:** use **Quit** in the bar widget, **Trigger › Stompgate › Quit
+Cortex Control** in the Omarchy menu, or `stompgate --quit`. They work even
+while the editor is hidden, and ask it to close just as its close button
+would. In gamescope mode, Super + W closes gamescope instead, which stops the
+editor without asking it. If the editor is stuck and won't close,
+`stompgate --quit --force` ends its Wine session.
 
 ### Keyboard shortcuts
 
@@ -195,8 +203,9 @@ mode.
 A sine-wave icon appears in the bar while Cortex Control is
 open. It's dim when the QC isn't connected. Left-click opens the popup:
 
-- **Header:** the device and its status, plus a **Hide / Show** button. Hidden,
-  the editor keeps running and stays connected to the QC.
+- **Header:** the device and its status, plus a **Hide / Show** button and,
+  while the editor runs, **Quit**. Hidden, the editor keeps running and stays
+  connected to the QC.
 - **Mode & scenes:** Preset · Scene · Stomp, and scenes in two rows (I and II
   on the mini).
 - **Footswitches:** presses the QC's switches. What a press does follows the
@@ -211,7 +220,7 @@ open. It's dim when the QC isn't connected. Left-click opens the popup:
 - **Middle-click** the icon to show or hide the editor; **right-click** to
   refresh.
 - **In the popup:** `1`–`8` for scenes, `m` for mode, `t` for the tuner, `k`
-  for keys, `d` for the doctor, Enter to show or hide.
+  for keys, `d` for the doctor, `q` to quit the editor, Enter to show or hide.
 
 **Settings** (in the widget's settings):
 - **Show icon:** `running` (default), `connected` (also while the QC is on), or
@@ -221,7 +230,7 @@ open. It's dim when the QC isn't connected. Left-click opens the popup:
 ### From a terminal
 
 ```sh
-stompgate [--show | --hide | --toggle | --keys]
+stompgate [--show | --hide | --toggle | --quit [--force] | --keys]
 stompgate-qc scene A-H | next | prev
 stompgate-qc tuner open | close | toggle
 stompgate-qc mode preset | scene | stomp | next | prev
