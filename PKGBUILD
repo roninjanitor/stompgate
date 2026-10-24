@@ -7,7 +7,7 @@
 # included or modified; stompgate-setup installs the user's own copy.
 
 pkgname=stompgate
-pkgver=0.3.0
+pkgver=0.4.0
 pkgrel=1
 pkgdesc='Run Neural DSP Cortex Control (Quad Cortex editor) on Omarchy via umu-launcher and GE-Proton'
 arch=('any')

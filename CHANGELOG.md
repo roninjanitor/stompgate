@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+- **Recording into REAPER:** `stompgate-qc connect [app]` wires the QC's
+  AUX0–7 into REAPER's inputs, or another JACK app's. If the app's outputs
+  aren't connected yet, it also wires the first two to the default speakers.
+  JACK apps don't remember their connections, and REAPER's own auto-connect
+  picks the default devices rather than the QC. The README has a new
+  **Recording into REAPER** section: JACK settings, DI on inputs 1/2,
+  processed sound on 3/4, and monitoring. REAPER through JACK is now tested
+  on a QC mini.
+
+### Fixed
+- **Pro Audio channels recording silence:** PipeWire can bring the Pro Audio
+  profile up with AUX2–7 at 0%. `stompgate-qc pro-audio on` now gives every
+  channel the loudest channel's volume.
+- **Wrong volume in the widget:** `audio-status` averaged the channels, so a
+  device at 100% on AUX0/1 and 0% elsewhere showed 25. It now reports the
+  loudest channel.
+
 ## 0.3.0
 
 ### Added

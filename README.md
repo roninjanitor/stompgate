@@ -238,6 +238,7 @@ stompgate-qc footswitch 1-8
 stompgate-qc preset 38C [setlist]     # bank 38, slot C; setlist 1 = My Presets
 stompgate-qc tap | gig-view open|close
 stompgate-qc pro-audio on|off | volume output|input 0-150 | mute output|input
+stompgate-qc connect [app]            # QC AUX0-7 into REAPER (or another JACK app)
 stompgate-doctor [--json | --status]
 ```
 
@@ -278,8 +279,34 @@ and PipeWire picks it up by itself.
   `stompgate-qc pro-audio on`. The channels then appear as plain `AUX0–7`
   instead of a 7.1 surround layout.
 - **REAPER** runs natively on Linux. Install it (for example
-  `omarchy pkg aur add reaper`) along with `pipewire-jack`. Then choose
-  **Preferences → Audio → Device → JACK**.
+  `omarchy pkg aur add reaper`) along with `pipewire-jack`.
+
+#### Recording into REAPER
+
+1. In **Preferences → Audio → Device**, set **Audio system** to **JACK**,
+   **Input channels** to **8** and **Output channels** to **2**. Turn off
+   **Auto-connect jack audio channels to hardware**, because it connects your
+   *default* devices (often a webcam mic and onboard audio), not the QC. Turn
+   off **Auto-suspend PulseAudio** too, because PipeWire doesn't need it.
+2. With REAPER open, run `stompgate-qc connect`. It wires the QC's AUX0–7
+   to `REAPER in1–8`. If REAPER's outputs aren't connected yet, it also wires
+   `out1/out2` to your default speakers. REAPER doesn't remember these
+   connections, so run it again after REAPER restarts. For another JACK app,
+   pass its name: `stompgate-qc connect Ardour`. To use other outputs, such
+   as the QC's own, rewire them in a patchbay like `qpwgraph`.
+3. Pick a track's input:
+   - **Input 1/2** is the **dry DI**. It's always there and can't be changed
+     on the Grid.
+   - **Input 3/4** is the **processed sound** from the Grid. If it's silent,
+     check where the preset's output block sends.
+
+   Record both if you want to re-amp later.
+4. Turn off record monitoring on the track and listen through the QC.
+   Monitoring in both places causes phasing.
+
+PipeWire can bring Pro Audio up with AUX2–7 at 0%, which records silence.
+`stompgate-qc pro-audio on` sets every channel to the same volume. If you
+switched profiles some other way, run it once.
 
 ## Troubleshooting
 
@@ -344,6 +371,8 @@ Tested by hand in October 2026 on:
   down to 601 px wide. In window mode, pseudotiling keeps the full UI down to
   801 px.
 - **MIDI:** scene, tuner, mode and footswitch control.
+- **Audio:** recording the DI and the processed sound into REAPER through JACK
+  (PipeWire), with playback through another interface.
 
 **Not tested yet.** Reports are welcome; see [COMPATIBILITY.md](COMPATIBILITY.md):
 - **Devices:** the **full-size Quad Cortex**. It's included in the udev rule
@@ -351,7 +380,6 @@ Tested by hand in October 2026 on:
 - **Graphics:** AMD and Intel.
 - **Install:** the setup **wizard** path. Testing used the silent install.
 - **MIDI:** loading presets over MIDI, and Gig View.
-- **Audio:** REAPER through JACK.
 - **Cloud:** signing in to a Neural DSP account from the editor itself. Here the
   account was linked on the device.
 

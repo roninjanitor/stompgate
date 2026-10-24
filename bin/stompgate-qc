@@ -22,6 +22,9 @@ Usage: stompgate-qc [--osd] <command> [args]
 Audio (PipeWire):
   audio-status                   JSON: card profile, output/input volume and mute
   pro-audio on|off               Pro Audio profile: plain AUX0-7 channels for DAWs
+  connect [app]                  Wire the QC's AUX0-7 into a JACK app's inputs (default
+                                 REAPER), and its first two outputs to the default
+                                 speakers if they aren't connected yet
   volume output|input <0-150>    Set the QC's output or input volume in percent
   mute output|input              Toggle mute
 
@@ -72,7 +75,7 @@ audio_status() {
   jq -n -c --argjson card "$card" --argjson sinks "$sinks" --argjson sources "$sources" '
     def qc($list): [$list[] | select(.name | test("Neural_DSP_Quad_Cortex")) | select(.name | endswith(".monitor") | not)][0];
     def pct($node): if $node == null then null
-      else ([$node.volume[] | .value_percent | rtrimstr("%") | tonumber] | add / length | round) end;
+      else ([$node.volume[] | .value_percent | rtrimstr("%") | tonumber] | max) end;
     qc($sinks) as $out | qc($sources) as $in |
     {
       present: true,
@@ -101,6 +104,85 @@ pro_audio() {
     *) die "usage: stompgate-qc pro-audio on|off" ;;
   esac
   pactl set-card-profile "$name" "$profile"
+  [[ $profile == pro-audio ]] || return 0
+  # PipeWire can bring the Pro Audio nodes up with AUX2-7 at 0%, which
+  # records silence in a DAW. Give every channel the loudest one's volume.
+  local kind node tries
+  for kind in sinks sources; do
+    for ((tries = 0; tries < 20; tries++)); do
+      node=$(qc_node "$kind")
+      [[ $node == *pro-* ]] && break
+      sleep 0.1
+    done
+    [[ $node == *pro-* ]] && level_channels "$kind" "$node"
+  done
+}
+
+level_channels() {
+  local kind="$1" node="$2" volume
+  volume=$(pactl -f json list "$kind" 2>/dev/null | jq -r --arg n "$node" '
+    [.[] | select(.name == $n) | .volume[] | .value] as $v
+    | if ($v | length) > 0 and ($v | min) != ($v | max) and ($v | max) > 0
+      then $v | max else empty end')
+  [[ -n $volume ]] || return 0
+  if [[ $kind == sinks ]]; then
+    pactl set-sink-volume "$node" "$volume"
+  else
+    pactl set-source-volume "$node" "$volume"
+  fi
+}
+
+# Audio ports of a PipeWire node in channel order, as "node:port" names for
+# pw-link, each followed by a tab and how many links it has.
+node_ports() {
+  local node="$1" direction="$2"
+  jq -r --arg node "$node" --arg dir "$direction" '
+    [.[] | select(.type == "PipeWire:Interface:Node" and .info.props."node.name" == $node) | .id] as $nodes
+    | [.[] | select(.type == "PipeWire:Interface:Link") | .info["output-port-id", "input-port-id"]] as $linked
+    | [.[] | select(.type == "PipeWire:Interface:Port")
+        | select(.info.props."node.id" as $n | $nodes | index($n))
+        | select(.info.props."port.direction" == $dir)
+        | select(.info.props."format.dsp" // "" | test("audio"))]
+    | sort_by(.info.props."port.id")[]
+    | .id as $id
+    | "\($node):\(.info.props."port.name")\t\([$linked[] | select(. == $id)] | length)"' <<<"$graph"
+}
+
+# JACK apps such as REAPER don't remember their connections, and their own
+# auto-connect picks the default devices rather than the QC.
+connect_app() {
+  local app="${1:-REAPER}" qc sink graph i
+  local -a from to outs speakers
+  qc=$(qc_node sources)
+  [[ -n $qc ]] || die "the Quad Cortex input isn't available. Is it connected?"
+  graph=$(pw-dump 2>/dev/null)
+  mapfile -t from < <(node_ports "$qc" out | cut -f1)
+  mapfile -t to < <(node_ports "$app" in | cut -f1)
+  (( ${#to[@]} )) ||
+    die "$app has no audio inputs in PipeWire. Is it running, with its audio system set to JACK?"
+  for ((i = 0; i < ${#from[@]} && i < ${#to[@]}; i++)); do
+    pw-link "${from[i]}" "${to[i]}" 2>/dev/null || true # already linked
+    echo "${from[i]##*:} -> ${to[i]}"
+  done
+  (( ${#from[@]} <= ${#to[@]} )) ||
+    echo "$app has ${#to[@]} inputs; set it to ${#from[@]} to get every QC channel."
+
+  # Leave the app's outputs alone if anything is already wired to them.
+  mapfile -t outs < <(node_ports "$app" out)
+  (( ${#outs[@]} )) || return 0
+  for i in "${outs[@]}"; do
+    if [[ ${i##*$'\t'} != 0 ]]; then
+      echo "$app's outputs are already connected; leaving them."
+      return 0
+    fi
+  done
+  sink=$(pactl get-default-sink 2>/dev/null)
+  [[ -n $sink ]] || return 0
+  mapfile -t speakers < <(node_ports "$sink" in | cut -f1)
+  for ((i = 0; i < 2 && i < ${#outs[@]} && i < ${#speakers[@]}; i++)); do
+    pw-link "${outs[i]%%$'\t'*}" "${speakers[i]}" 2>/dev/null || true
+    echo "${outs[i]%%$'\t'*} -> ${speakers[i]}"
+  done
 }
 
 node_for() {
@@ -316,6 +398,7 @@ shift || true
 case "$command" in
   audio-status) audio_status ;;
   pro-audio) pro_audio "${1:-}" ;;
+  connect) connect_app "${1:-}" ;;
   volume) set_volume "${1:-}" "${2:-}" ;;
   mute) toggle_mute "${1:-}" ;;
   midi-status) midi_status ;;

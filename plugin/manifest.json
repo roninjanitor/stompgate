@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "stompgate.widget",
   "name": "Stompgate",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "author": "Nick Lozano",
   "license": "MIT",
   "description": "Unofficial, not affiliated with Neural DSP. Neural DSP Quad Cortex in the Omarchy bar while Cortex Control runs: show or hide the editor, switch scenes, toggle the tuner and set the QC's audio.",

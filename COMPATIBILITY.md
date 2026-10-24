@@ -9,7 +9,7 @@ unofficial and not supported by Neural DSP; see the
 | Date | Device | CorOS | Cortex Control | GPU and driver | Screen | Omarchy / Hyprland | Display mode | Result |
 |---|---|---|---|---|---|---|---|---|
 | 2026-10 | Quad Cortex mini | not recorded | 4.1.0 | NVIDIA RTX 3060 Ti, 610.57 | 3440×1440 | Hyprland 0.56.2 | gamescope and window | ✅ Works: editing, scenes, tuner, modes, footswitches, tiling |
-| 2026-10-24 | Quad Cortex mini | not recorded | 4.1.0 | NVIDIA RTX 3060 Ti, 615.78 | 3440×1440 | Hyprland 0.56.2-4, gamescope 3.16.28 | gamescope | ✅ Works. gamescope 3.16.31 and 3.17.0 on this Hyprland never show the window; see the README's troubleshooting table |
+| 2026-10-24 | Quad Cortex mini | not recorded | 4.1.0 | NVIDIA RTX 3060 Ti, 615.78 | 3440×1440 | Hyprland 0.56.2-4, gamescope 3.16.28 | gamescope | ✅ Works, including recording into REAPER via JACK. gamescope 3.16.31 and 3.17.0 on this Hyprland never show the window; see the README's troubleshooting table |
 
 Everything else is untested so far:
 - the full-size Quad Cortex,
@@ -17,7 +17,6 @@ Everything else is untested so far:
 - 1080p and laptop screens,
 - the setup wizard install path,
 - loading presets and Gig View over MIDI,
-- REAPER through JACK,
 - signing in from inside the editor.
 
 The full-size Quad Cortex is handled by the udev rule and the controls, and
