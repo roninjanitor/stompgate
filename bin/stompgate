@@ -132,7 +132,13 @@ export WINEDEBUG="${WINEDEBUG:--all}"
 unset PROTON_ENABLE_WAYLAND PROTON_USE_WAYLAND
 
 launch=(umu-run "$APP" "$@")
-if [[ $(display_mode) == gamescope ]]; then
+mode=$(display_mode)
+if [[ $mode == gamescope ]] && versions=$(gamescope_hidden_window_bug); then
+  read -r gs_ver hl_ver <<<"$versions"
+  notify "gamescope $gs_ver never shows its window on Hyprland $hl_ver, so Cortex Control is opening as a normal window. Run stompgate-doctor for the fix."
+  mode=window
+fi
+if [[ $mode == gamescope ]]; then
   # Render at ~80% of the monitor's height and let gamescope scale that to the
   # tile with letterboxing ("fit"), so the UI is never cropped at any size.
   # Mostly shrinking (rather than enlarging) keeps text sharp.

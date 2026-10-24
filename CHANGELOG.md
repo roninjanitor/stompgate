@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **Editor invisible in gamescope mode:** with gamescope 3.16.31 or later on
+  Hyprland 0.56.2 the editor started but its window never appeared, and later
+  presses of the shortcut reported that it was already starting. Gamescope
+  hides its window for a moment while Proton starts and then waits for the
+  configure that xdg-shell requires; Hyprland up to 0.56.2 never sends it after
+  an unmap (fixed upstream in hyprwm/Hyprland#16444, not yet released). The
+  launcher now detects that pair, opens a normal window instead and says so.
+  `stompgate-doctor` reports it and shows the fix: keep gamescope 3.16.28
+  (`IgnorePkg = gamescope`) until Hyprland updates. Gamescope's SDL backend was
+  tried and rejected: it crashes in `vulkan_remake_swapchain` on NVIDIA.
+  Tracked in #1.
+
 ## 0.2.0 (first public release)
 
 Unofficial. Not affiliated with Neural DSP or Omarchy. Development builds were

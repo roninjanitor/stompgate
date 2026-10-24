@@ -191,7 +191,17 @@ else
 fi
 
 case $(display_mode) in
-  gamescope) add OK "Display" "gamescope: letterboxed into any tile size" ;;
+  gamescope)
+    if versions=$(gamescope_hidden_window_bug); then
+      read -r gs_ver hl_ver <<<"$versions"
+      fix="downgrade gamescope to 3.16.28 and add 'IgnorePkg = gamescope' to /etc/pacman.conf until Hyprland updates"
+      cached=$(ls /var/cache/pacman/pkg/gamescope-3.16.28-*.pkg.tar.zst 2>/dev/null | head -1)
+      [[ -n $cached ]] && fix="sudo pacman -U $cached, then add 'IgnorePkg = gamescope' to /etc/pacman.conf until Hyprland updates"
+      add WARN "Display" "gamescope $gs_ver never shows its window on Hyprland $hl_ver (hyprwm/Hyprland#16444), so the launcher opens a normal window instead. Fix: $fix"
+    else
+      add OK "Display" "gamescope: letterboxed into any tile size"
+    fi
+    ;;
   *)
     if command -v gamescope >/dev/null; then
       add OK "Display" "normal window, pseudotiled (gamescope available: stompgate-setup --display gamescope)"

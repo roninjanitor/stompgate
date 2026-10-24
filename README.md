@@ -288,6 +288,7 @@ or talks to the QC.
 | Symptom | What to do |
 |---|---|
 | The Cortex Control UI is cut off in a tile | Install `gamescope` and run `stompgate-setup --display gamescope`. See [Tiling and window size](#tiling-and-window-size). |
+| In gamescope mode the window never appears, or the launcher says it's opening a normal window instead | gamescope 3.16.31 and later wait for a configure that Hyprland 0.56.2 never sends after an unmap ([hyprwm/Hyprland#16444](https://github.com/hyprwm/Hyprland/pull/16444), fixed upstream but not released). Downgrade to gamescope 3.16.28 (`sudo pacman -U /var/cache/pacman/pkg/gamescope-3.16.28-1-x86_64.pkg.tar.zst` if it's still cached, otherwise from the [Arch Linux Archive](https://archive.archlinux.org/packages/g/gamescope/)) and add `IgnorePkg = gamescope` to `/etc/pacman.conf` until Hyprland updates. The doctor reports this. |
 | The QC doesn't connect | Use a data cable and the logged-in desktop session. Run the doctor. Its "Quad Cortex … accessible" line must be OK. |
 | Repeated `hidraw_device_set_output_report … Broken pipe` in the Wine log | Known and harmless: the QC rejects one optional message, and everything else works. |
 | Scene, tuner or mode buttons do nothing | Turn on MIDI OVER USB on the QC and check its MIDI channel (1 or OMNI). `~/.local/state/stompgate/qc.log` shows what was sent. |

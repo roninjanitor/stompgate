@@ -55,6 +55,30 @@ display_mode() {
   echo "$mode"
 }
 
+# Gamescope 3.16.31 and later hide their window for a moment while Proton
+# starts and then, as xdg-shell requires, wait for a configure before showing
+# it again. Hyprland up to 0.56.2 never sends that configure after an unmap,
+# so the editor runs invisibly. Hyprland fixed this on its main branch
+# (hyprwm/Hyprland#16444, 2026-10-01); until a release ships it, the pair is
+# unusable. Succeeds and prints "<gamescope> <hyprland>" when that pair is
+# installed. Tracking: roninjanitor/stompgate#1.
+GAMESCOPE_WAITS_SINCE=3.16.31
+HYPRLAND_FIXED_SINCE=0.57.0
+gamescope_hidden_window_bug() {
+  local gs hl
+  gs=$(pacman -Q gamescope 2>/dev/null | cut -d' ' -f2)
+  gs=${gs%-*}
+  [[ -n $gs ]] || return 1
+  hl=$(hyprctl version -j 2>/dev/null | jq -r '.version // empty' 2>/dev/null)
+  [[ -n $hl ]] || hl=$(pacman -Q hyprland 2>/dev/null | cut -d' ' -f2)
+  hl=${hl#v}
+  hl=${hl%-*}
+  [[ -n $hl ]] || return 1
+  (( $(vercmp "$gs" "$GAMESCOPE_WAITS_SINCE") >= 0 )) || return 1
+  (( $(vercmp "$hl" "$HYPRLAND_FIXED_SINCE") < 0 )) || return 1
+  echo "$gs $hl"
+}
+
 # Static files: the checkout when run from it, otherwise the installed package.
 if [[ -z ${SHARE_DIR:-} ]]; then
   _cc_lib_dir="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
